@@ -1,6 +1,7 @@
 import sys
 import itertools
 
+
 sys.setrecursionlimit(15000)
 
 BASIC_BLOCK_END = ['STOP',
@@ -33,7 +34,7 @@ class AbsStackElem(object):
     '''
 
     # Maximum number of values inside the set. If > MAXVALS -> TOP
-    MAXVALS = 10
+    MAXVALS = 100
 
     def __init__(self):
         self._vals = []
@@ -195,6 +196,15 @@ class Stack(object):
 
         self._elems.append(elem)
 
+    def insert(self, elem):
+        if not isinstance(elem, AbsStackElem):
+            st = AbsStackElem()
+            st.append(elem)
+            elem = st
+
+        self._elems.insert(0, elem)
+
+
     def pop(self):
         '''
             Pop an element.
@@ -222,10 +232,9 @@ class Stack(object):
         # we can assume that elements are missing on the stack
         else:
             top = self.top()
-            self.push(None)
             missing_elems = n - len(self._elems) + 1
             for _ in range(0, missing_elems):
-                self.push(None)
+                self.insert(None)
             self._elems[-1-n] = top
 
     def dup(self, n):
@@ -308,7 +317,7 @@ class Stack(object):
         '''
             String representation (only first 5 items)
         '''
-        return str([str(x) for x in self._elems[-5::]])
+        return str([str(x) for x in self._elems[-100::]])
 
 
 class StackValueAnalysis(object):
@@ -320,9 +329,12 @@ class StackValueAnalysis(object):
     '''
 
     def __init__(self,
-                 basic_blocks,
-                 maxiteration=100,
-                 maxexploration=10,
+                 entry_point,
+                 basic_blocks_as_dict,
+                 nodes_as_dict,
+                 key,
+                 maxiteration=1000,
+                 maxexploration=100,
                  initStack=None):
         '''
         Args:
@@ -353,14 +365,13 @@ class StackValueAnalysis(object):
 
         self.initStack = initStack
 
-        self.basic_blocks = basic_blocks
-        self.basic_blocks_as_dict = {} # allow to retrieve a BB from its start and end PC
-        self.nodes_as_dict = {}
-        for bb in basic_blocks:
-            self.basic_blocks_as_dict[bb.start.pc] = bb
-            self.basic_blocks_as_dict[bb.end.pc] = bb
-            for ins in bb.instructions:
-                self.nodes_as_dict[ins.pc] = ins
+        self._entry_point = entry_point
+        self.basic_blocks_as_dict = basic_blocks_as_dict
+        self.nodes_as_dict = nodes_as_dict
+
+        self._key = key
+
+        self._basic_blocks_explored = []
 
     def is_jumpdst(self, addr):
         '''
@@ -433,6 +444,9 @@ class StackValueAnalysis(object):
         '''
         last_jump = None
 
+        if not bb.start.pc in self._basic_blocks_explored:
+            self._basic_blocks_explored.append(bb.start.pc)
+
         ins = None
         for ins in bb.instructions:
             addr = ins.pc
@@ -440,6 +454,11 @@ class StackValueAnalysis(object):
             stack = self._transfer_func_ins(ins, addr, stack)
 
             self.stacksOut[addr] = stack
+#            if addr in [0x196, 0xc3, 0x1a4] or True:
+#                print(ins)
+#                print('PC {}, instack {}'.format(hex(addr), self.stacksIn[addr]))
+#                print('PC {}, outstack {}'.format(hex(addr), self.stacksOut[addr]))
+#                print('')
 
         if ins:
             # if we are going to do a jump / jumpi
@@ -464,6 +483,7 @@ class StackValueAnalysis(object):
             self.bb_counter[addr] += 1
 
             if self.bb_counter[addr] > self.MAXEXPLORATION:
+                print('Reach max explo {}'.format(hex(addr)))
                 return
 
         # Check if the bb was already analyzed (used for convergence)
@@ -472,46 +492,24 @@ class StackValueAnalysis(object):
         else:
             prev_stack = None
 
-        # Merge all the stack fathers
-        # We merge only father that were already analyzed
-        fathers = bb.fathers
 
         if init and self.initStack:
             stack = self.initStack
         else:
             stack = Stack()
 
-        if len(fathers) > 1 and not init:
-            i = 0
+        # Merge all the stack fathers
+        # We merge only father that were already analyzed
+        fathers = bb.fathers.get(self._key, [])
 
-            d_start = None
+        fathers = [f for f in fathers if f.end.pc in self.stacksOut]
 
-            for father  in fathers:
-                if father.end.pc in self.stacksOut:
-                    d_start = father
-
-            if not d_start:
-                return
-
-            if d_start.end.pc in self.stacksOut:
-                stack.copy_stack(self.stacksOut[d_start.end.pc])
-
-                fathers = fathers[:i] + fathers[i+1:]
-
-                for d in fathers:
-                    if d.end.pc in self.stacksOut:
-                        stack2 = self.stacksOut[d.end.pc]
-
-                        stack = stack.merge(stack2)
-
-        elif len(fathers) == 1 and not init:
+        if fathers:
             father = fathers[0]
-
-            if father.end.pc in self.stacksOut:
-                stack.copy_stack(self.stacksOut[father.end.pc])
-            else:
-                return
-
+            fathers = fathers[1::]
+            stack.copy_stack(self.stacksOut[father.end.pc])
+            for father in fathers:
+                stack = stack.merge(self.stacksOut[father.end.pc])
         # Analyze the BB
         self._explore_bb(bb, stack)
 
@@ -545,7 +543,7 @@ class StackValueAnalysis(object):
                 converged = True
 
         if not converged:
-            for son in bb.sons:
+            for son in bb.sons.get(self._key, []):
                 self._transfer_func_bb(son)
 
     def add_branches(self, src, dst):
@@ -573,11 +571,11 @@ class StackValueAnalysis(object):
         """
         init = False
 
-        print('Explore {}'.format(hex(bb.start.pc)))
+#        print('Explore {}'.format(hex(bb.start.pc)))
         self._transfer_func_bb(bb, init)
 
-        print('End of the analysis')
-        print(self.last_discovered_targets)
+  #      print('End of the analysis')
+   #     print(self.last_discovered_targets)
         last_discovered_targets = self.last_discovered_targets
         self.last_discovered_targets = {}
 
@@ -586,32 +584,34 @@ class StackValueAnalysis(object):
             for dst in dsts:
                 bb_to = self.basic_blocks_as_dict[dst]
 
-                bb_from.add_son(bb_to)
-                bb_to.add_father(bb_from)
+                bb_from.add_son(bb_to, self._key)
+                bb_to.add_father(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
         dsts = list(set([item for sublist in dsts for item in sublist]))
-        print([hex(d) for d in dsts])
+        #print([hex(d) for d in dsts])
         for dst in dsts:
             bb = self.basic_blocks_as_dict[dst]
             self.explore(bb)
 
     def simple_edges(self):
-        for bb in self.basic_blocks:
+        for bb in self.basic_blocks_as_dict.values():
             if bb.end.name == 'JUMPI':
                 dst = self.basic_blocks_as_dict[bb.end.pc + 1]
-                bb.add_son(dst)
-                dst.add_father(bb)
+                bb.add_son(dst, self._key)
+                dst.add_father(bb, self._key)
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
-                print(bb.end.name)
+                #print(bb.end.name)
                 dst = self.basic_blocks_as_dict[bb.end.pc + 1 + bb.end.operand_size]
                 assert dst.start.name == 'JUMPDEST'
-                bb.add_son(dst)
-                dst.add_father(bb)
+                bb.add_son(dst, self._key)
+                dst.add_father(bb, self._key)
 
     def analyze(self):
         self.simple_edges()
-        self.explore(self.basic_blocks[0])
+        self.explore(self._entry_point)
+
+        return self._basic_blocks_explored
 

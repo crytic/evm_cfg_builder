@@ -1,20 +1,18 @@
-**WIP**
+# EVM CFG BUILDER
 
-## EVM CFG BUILDER
+Use this library to extract a control flow graph (CFG) from EVM bytecode. `evm_cfg_build` is used internally by Ethersplay, Manticore, and many other tools from Trail of Bits to 
 
-Library to create CFG and extract generic information.
+## Features
 
-### Features
-- CFG recovery
-- Attributes recovery (payable/view/pure)
-- Output to dot
+* Recovers a Control Flow Graph (CFG)
+* Recovers attributes (e.g., payable, view, pure)
+* Outputs the CFG to a dot file
 
-### Example
+## Example
 
 ```
 $ python evm_cfg_builder/cfg_builder.py tests/fomo3d.evm
 ...
-
 
 dividendsOf(address), 7 #bbs , view
 name(), 16 #bbs , view
@@ -48,12 +46,15 @@ reinvest(), 86 #bbs
 
 `test_<name>.dot` files will be generated.
 
-## Require
-- pyevmasm
+## Requirements
 
-### TODO
+* [pyevmasm](https://github.com/trailofbits/pyevmasm)
 
-- Clean API and add documenttation
-- Improve VSA
-- Export dispatcher
+## TODO
+
+evm_cfg_builder is a work in progress. Please help us with:
+
+* Cleaning API and adding documenttation
+* Improving VSA
+* Exporting the dispatcher
 

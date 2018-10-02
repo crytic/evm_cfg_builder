@@ -1,4 +1,4 @@
-from evm_helpers import BASIC_BLOCK_END
+from .evm_helpers import BASIC_BLOCK_END
 
 class BasicBlock(object):
 
@@ -14,6 +14,9 @@ class BasicBlock(object):
 
     def add_instruction(self, instruction):
         self.instructions += [instruction]
+
+    def __repr__(self):
+        return '<cfg BasicBlock@{:x}-{:x}>'.format(self.start.pc, self.end.pc)
 
     @property
     def start(self):
@@ -228,6 +231,7 @@ def compute_instructions(instructions):
             if instruction.name in BASIC_BLOCK_END:
                 bbs.append(bb)
                 bb = BasicBlock()
+
     return bbs
 
 def is_jump_to_function(block):

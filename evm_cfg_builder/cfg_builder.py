@@ -33,9 +33,12 @@ def get_info(bytecode):
     functions = find_functions(basic_blocks[0], basic_blocks_as_dict, True)
 
     for function in functions:
-        h = hex(function.hash_id)
-        if h in knownHashes:
-            function.name = knownHashes[h]
+        if function.hash_id == -1:
+            function.name = '_fallback'
+        else:
+            h = hex(function.hash_id)
+            if h in knownHashes:
+                function.name = knownHashes[h]
 
     for function in functions:
         #print('Analyze {}'.format(function.name))
@@ -53,8 +56,7 @@ def output_to_dot(functions):
     for function in functions:
         function.output_to_dot('test_')
 
-if __name__ == '__main__':
-
+def main():
     filename = sys.argv[1]
 
     with open(filename) as f:
@@ -66,3 +68,7 @@ if __name__ == '__main__':
         for function in functions:
             print(function)
         output_to_dot(functions)
+
+
+if __name__ == '__main__':
+    main()

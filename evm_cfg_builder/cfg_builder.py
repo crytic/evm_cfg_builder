@@ -1,14 +1,14 @@
-import sys
-import re
 import binascii
+import re
+import sys
 
 from pyevmasm import disassemble_all
-from evm_helpers import create_dicts_from_basic_blocks
-from known_hashes import knownHashes
 
+from .cfg import compute_instructions, find_functions
+from .evm_helpers import create_dicts_from_basic_blocks
+from .known_hashes import knownHashes
+from .value_set_analysis import StackValueAnalysis
 
-from value_set_analysis import StackValueAnalysis
-from cfg import compute_instructions, find_functions
 
 def remove_metadata(bytecode):
     '''
@@ -26,8 +26,7 @@ def remove_metadata(bytecode):
 
 def get_info(bytecode):
 
-    bytecode = remove_metadata(bytecode)
-    instructions = list(disassemble_all(binascii.unhexlify(bytecode))) # TODO allow raw bytecode
+    instructions = disassemble_all(bytecode)
     basic_blocks = compute_instructions(instructions)
     (basic_blocks_as_dict, nodes_as_dict) = create_dicts_from_basic_blocks(basic_blocks)
 
@@ -39,7 +38,7 @@ def get_info(bytecode):
             function.name = knownHashes[h]
 
     for function in functions:
-        print('Analyze {}'.format(function.name))
+        #print('Analyze {}'.format(function.name))
         vsa = StackValueAnalysis(function.entry, basic_blocks_as_dict, nodes_as_dict, function.hash_id)
         bbs = vsa.analyze()
         function.basic_blocks = [basic_blocks_as_dict[bb] for bb in bbs]
@@ -48,12 +47,7 @@ def get_info(bytecode):
         function.check_view()
         function.check_pure()
 
-
-    print('End of analysis')
-
-    for function in functions:
-        print(function)
-    output_to_dot(functions)
+    return functions
 
 def output_to_dot(functions):
     for function in functions:
@@ -64,4 +58,11 @@ if __name__ == '__main__':
     filename = sys.argv[1]
 
     with open(filename) as f:
-        get_info(f.read().replace('\n',''))
+        bytecode = f.read().replace('\n','')
+        bytecode = remove_metadata(bytecode)
+        bytecode = binascii.unhexlify(bytecode)
+        functions = get_info(bytecode)
+        print('End of analysis')
+        for function in functions:
+            print(function)
+        output_to_dot(functions)

@@ -1,9 +1,6 @@
 import sys
 import itertools
 
-
-sys.setrecursionlimit(15000)
-
 BASIC_BLOCK_END = ['STOP',
                    'SELFDESTRUCT',
                    'RETURN',
@@ -373,6 +370,10 @@ class StackValueAnalysis(object):
 
         self._basic_blocks_explored = []
 
+        self._to_explore = {self._entry_point}
+
+        self._sons = []
+
     def is_jumpdst(self, addr):
         '''
             Check that an instruction is a JUMPDEST
@@ -483,7 +484,7 @@ class StackValueAnalysis(object):
             self.bb_counter[addr] += 1
 
             if self.bb_counter[addr] > self.MAXEXPLORATION:
-                print('Reach max explo {}'.format(hex(addr)))
+                # print('Reach max explo {}'.format(hex(addr)))
                 return
 
         # Check if the bb was already analyzed (used for convergence)
@@ -543,8 +544,7 @@ class StackValueAnalysis(object):
                 converged = True
 
         if not converged:
-            for son in bb.sons.get(self._key, []):
-                self._transfer_func_bb(son)
+            self._sons = bb.sons.get(self._key, []) + self._sons
 
     def add_branches(self, src, dst):
         '''
@@ -565,17 +565,18 @@ class StackValueAnalysis(object):
 
                 self.all_discovered_targets[src].add(d)
 
-    def explore(self, bb):
+    def explore(self):
         """
             Launch the analysis
         """
         init = False
 
-#        print('Explore {}'.format(hex(bb.start.pc)))
-        self._transfer_func_bb(bb, init)
+        bb = self._to_explore.pop()
 
-  #      print('End of the analysis')
-   #     print(self.last_discovered_targets)
+        self._transfer_func_bb(bb, init)
+        while self._sons:
+            self._transfer_func_bb(self._sons.pop())
+
         last_discovered_targets = self.last_discovered_targets
         self.last_discovered_targets = {}
 
@@ -588,11 +589,7 @@ class StackValueAnalysis(object):
                 bb_to.add_father(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
-        dsts = list(set([item for sublist in dsts for item in sublist]))
-        #print([hex(d) for d in dsts])
-        for dst in dsts:
-            bb = self.basic_blocks_as_dict[dst]
-            self.explore(bb)
+        self._to_explore |= {self.basic_blocks_as_dict[item] for sublist in dsts for item in sublist}
 
     def simple_edges(self):
         for bb in self.basic_blocks_as_dict.values():
@@ -603,7 +600,6 @@ class StackValueAnalysis(object):
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
-                #print(bb.end.name)
                 dst = self.basic_blocks_as_dict[bb.end.pc + 1 + bb.end.operand_size]
                 assert dst.start.name == 'JUMPDEST'
                 bb.add_son(dst, self._key)
@@ -611,7 +607,8 @@ class StackValueAnalysis(object):
 
     def analyze(self):
         self.simple_edges()
-        self.explore(self._entry_point)
+
+        while self._to_explore:
+            self.explore()
 
         return self._basic_blocks_explored
-

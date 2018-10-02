@@ -244,18 +244,23 @@ def is_jump_to_function(block):
         (int): function hash, or None
     '''
 
-    has_calldata_load = False
+    has_calldata_size = False
     last_pushed_value = None
     previous_last_pushed_value = None
     for i in block.instructions:
+        if i.name == 'CALLDATASIZE':
+            has_calldata_size = True
 
-        #print(hex(i.pc))
         if i.name.startswith('PUSH'):
             previous_last_pushed_value = last_pushed_value
             last_pushed_value = i.operand
 
+    if i.name == 'JUMPI' and has_calldata_size:
+        return last_pushed_value, -1
+
     if i.name == 'JUMPI' and previous_last_pushed_value:
         return last_pushed_value, previous_last_pushed_value
+
     return None, None
 
 def find_functions(block, basic_block_as_dict, is_entry_block=False):

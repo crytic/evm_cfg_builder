@@ -80,11 +80,9 @@ class AbsStackElem(object):
         if not v1 or not v2:
             newElem.set_vals(None)
             return newElem
-        combi = list(itertools.product(v1, v2))
+        combi = itertools.product(v1, v2)
         for (a, b) in combi:
-            if a is None:
-                newElem.append(None)
-            elif b is None:
+            if a is None or b is None:
                 newElem.append(None)
             else:
                 newElem.append(a & b)
@@ -133,9 +131,8 @@ class AbsStackElem(object):
         if len(v1) != len(v2):
             return False
 
-        for v in v1:
-            if v not in v2:
-                return False
+        if any(v not in v2 for v in v1):
+            return False
 
         return True
 

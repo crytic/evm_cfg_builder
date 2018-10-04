@@ -80,12 +80,13 @@ class AbsStackElem(object):
         if not v1 or not v2:
             newElem.set_vals(None)
             return newElem
-        combi = itertools.product(v1, v2)
-        for (a, b) in combi:
+
+        for (a, b) in itertools.product(v1, v2):
             if a is None or b is None:
                 newElem.append(None)
             else:
                 newElem.append(a & b)
+
         return newElem
 
     def merge(self, elem):

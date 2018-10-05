@@ -4,9 +4,13 @@ Use this library to extract a control flow graph (CFG) from EVM bytecode. `evm_c
 
 ## Features
 
-* Recovers a Control Flow Graph (CFG)
+evm_cfg_builder is a work in progress, but it's already very useful today:
+
+* Reliably recovers a Control Flow Graphs (CFG) from EVM bytecode
 * Recovers attributes (e.g., payable, view, pure)
 * Outputs the CFG to a dot file
+
+We would be glad for contributions that help clean up the API, add documentation, improve the value set analysis (VSA), or export the dispatcher.
 
 ## Example
 
@@ -50,11 +54,6 @@ reinvest(), 86 #bbs
 
 * [pyevmasm](https://github.com/trailofbits/pyevmasm)
 
-## TODO
+## License
 
-evm_cfg_builder is a work in progress. Please help us with:
-
-* Cleaning API and adding documenttation
-* Improving VSA
-* Exporting the dispatcher
-
+evm_cfg_builder is licensed and distributed under the AGPLv3 license. [Contact us](mailto:opensource@trailofbits.com) if you're looking for an exception to the terms.

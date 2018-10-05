@@ -1,1 +1,1 @@
-__all__ = ['cfg_builder', 'cfg', 'value_set_analysis']
+__all__ = ['cfg_builder', 'cfg', 'value_set_analysis', 'known_hashes']

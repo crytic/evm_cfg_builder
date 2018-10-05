@@ -10,7 +10,7 @@ evm_cfg_builder is a work in progress, but it's already very useful today:
 * Recovers attributes (e.g., payable, view, pure)
 * Outputs the CFG to a dot file
 
-We're looking for help cleaning up the API, adding documentation, improving the VSA, and exporting the dispatcher.
+`evm_cfg_builder` is a reliable foundation to build many possible program analysis tools for EVM. This library is covered by our standard bounty policy and we encourage contributions that address any known [issues](https://github.com/trailofbits/evm_cfg_builder/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc). Join us on the [Empire Hacking Slack](https://empireslacking.herokuapp.com) to discuss using or extending evm_cfg_builder.
 
 ## Example
 

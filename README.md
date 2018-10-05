@@ -1,12 +1,12 @@
 # EVM CFG BUILDER
 
-Use this library to extract a control flow graph (CFG) from EVM bytecode. `evm_cfg_build` is used internally by Ethersplay, Manticore, and many other tools from Trail of Bits.
+Use this library to extract a control flow graph (CFG) from EVM bytecode. `evm_cfg_builder` is used by Ethersplay, Manticore, and many other tools from Trail of Bits.
 
 ## Features
 
 evm_cfg_builder is a work in progress, but it's already very useful today:
 
-* Reliably recovers a Control Flow Graphs (CFG) from EVM bytecode
+* Reliably recovers a Control Flow Graph (CFG) from EVM bytecode
 * Recovers attributes (e.g., payable, view, pure)
 * Outputs the CFG to a dot file
 
@@ -56,4 +56,4 @@ reinvest(), 86 #bbs
 
 ## License
 
-evm_cfg_builder is licensed and distributed under the AGPLv3 license. [Contact us](mailto:opensource@trailofbits.com) if you're looking for an exception to the terms.
+evm_cfg_builder is licensed and distributed under the AGPLv3. [Contact us](mailto:opensource@trailofbits.com) if you're looking for an exception to the terms.

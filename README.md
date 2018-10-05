@@ -10,7 +10,7 @@ evm_cfg_builder is a work in progress, but it's already very useful today:
 * Recovers attributes (e.g., payable, view, pure)
 * Outputs the CFG to a dot file
 
-We would be glad for contributions that help clean up the API, add documentation, improve the value set analysis (VSA), or export the dispatcher.
+We're looking for help cleaning up the API, adding documentation, improving the VSA, and exporting the dispatcher.
 
 ## Example
 

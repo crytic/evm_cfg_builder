@@ -6,7 +6,7 @@ from pyevmasm import disassemble_all
 
 from .cfg import compute_instructions, find_functions
 from .evm_helpers import create_dicts_from_basic_blocks
-from .known_hashes import knownHashes
+from .known_hashes import known_hashes
 from .value_set_analysis import StackValueAnalysis
 
 
@@ -36,9 +36,8 @@ def get_info(bytecode):
         if function.hash_id == -1:
             function.name = '_fallback'
         else:
-            h = hex(function.hash_id)
-            if h in knownHashes:
-                function.name = knownHashes[h]
+            if function.hash_id in known_hashes:
+                function.name = known_hashes[function.hash_id]
 
     for function in functions:
         #print('Analyze {}'.format(function.name))

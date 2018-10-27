@@ -52,7 +52,7 @@ def main():
         cfg = CFG(binascii.unhexlify(bytecode))
         cfg.remove_metadata()
         cfg.compute_basic_blocks()
-        cfg.compute_functions(cfg.basic_blocks[0])
+        cfg.compute_functions(cfg.basic_blocks[0], True)
         get_info(cfg)
         print('End of analysis')
         for function in cfg.functions:

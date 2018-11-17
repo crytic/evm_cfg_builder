@@ -1,5 +1,5 @@
-import basic_block
-import function
+from . import basic_block
+from . import function
 
 import re
 from pyevmasm import disassemble_all
@@ -29,16 +29,19 @@ class ImmutableDict(dict):
         raise NotImplementedError()
 
 class CFG(object):
-    def __init__(self, bytecode=None):
-        if bytecode is None:
-            self.__bytecode = bytes()
-        else:
-            self.__bytecode = bytecode
-
-        self.__functions = dict()
+    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None):
+        self.__functions = list()
         self.__basic_blocks = dict()
         self.__instructions = dict()
-        self.edges = dict()
+
+        if bytecode is not None:
+            self.__bytecode = bytecode
+            if instructions is not None:
+                self.__instructions = instructions
+                if basic_blocks is not None:
+                    self.__basic_blocks = basic_blocks
+                    if functions is not None:
+                        self.__functions = functions
 
     @property
     def bytecode(self):
@@ -53,7 +56,6 @@ class CFG(object):
         self.__functions = list()
         self.__basic_blocks = dict()
         self.__instructions = dict()
-        self.__edges = dict()
         self.__bytecode = dict()
     
     def remove_metadata(self):

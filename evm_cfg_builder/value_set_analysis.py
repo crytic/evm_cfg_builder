@@ -360,8 +360,7 @@ class StackValueAnalysis(object):
         self.initStack = initStack
 
         self._entry_point = entry_point
-        # self.basic_blocks_as_dict = basic_blocks_as_dict
-        # self.nodes_as_dict = nodes_as_dict
+        
         self.cfg = cfg
 
         self._key = key
@@ -589,24 +588,8 @@ class StackValueAnalysis(object):
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
         self._to_explore |= {self.cfg.basic_blocks[item] for sublist in dsts for item in sublist}
 
-    def simple_edges(self):
-        for bb in self.cfg.basic_blocks.values():
-            print(bb)
-            if bb.end.name == 'JUMPI':
-                dst = self.cfg.basic_blocks[bb.end.pc + 1]
-                bb.add_son(dst, self._key)
-                dst.add_father(bb, self._key)
-            # A bb can be split in the middle if it has a JUMPDEST
-            # Because another edge can target the JUMPDEST
-            if bb.end.name not in BASIC_BLOCK_END:
-                dst = self.cfg.basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
-                assert dst.start.name == 'JUMPDEST'
-                bb.add_son(dst, self._key)
-                dst.add_father(bb, self._key)
 
     def analyze(self):
-        # self.simple_edges()
-
         while self._to_explore:
             self.explore()
 

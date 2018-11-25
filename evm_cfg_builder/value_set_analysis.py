@@ -324,9 +324,8 @@ class StackValueAnalysis(object):
     '''
 
     def __init__(self,
+                 cfg,
                  entry_point,
-                 basic_blocks_as_dict,
-                 nodes_as_dict,
                  key,
                  maxiteration=1000,
                  maxexploration=100,
@@ -361,8 +360,9 @@ class StackValueAnalysis(object):
         self.initStack = initStack
 
         self._entry_point = entry_point
-        self.basic_blocks_as_dict = basic_blocks_as_dict
-        self.nodes_as_dict = nodes_as_dict
+        # self.basic_blocks_as_dict = basic_blocks_as_dict
+        # self.nodes_as_dict = nodes_as_dict
+        self.cfg = cfg
 
         self._key = key
 
@@ -383,9 +383,9 @@ class StackValueAnalysis(object):
         Returns:
             bool: True if the instruction is a JUMPDEST
         '''
-        if not addr in self.nodes_as_dict:
+        if not addr in self.cfg.instructions:
             return False
-        ins = self.nodes_as_dict[addr]
+        ins = self.cfg.instructions[addr]
         return ins.name == 'JUMPDEST'
 
     def stub(self, ins, addr, stack):
@@ -579,32 +579,33 @@ class StackValueAnalysis(object):
         self.last_discovered_targets = {}
 
         for src, dsts in last_discovered_targets.items():
-            bb_from = self.basic_blocks_as_dict[src]
+            bb_from = self.cfg.basic_blocks[src]
             for dst in dsts:
-                bb_to = self.basic_blocks_as_dict[dst]
+                bb_to = self.cfg.basic_blocks[dst]
 
                 bb_from.add_son(bb_to, self._key)
                 bb_to.add_father(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
-        self._to_explore |= {self.basic_blocks_as_dict[item] for sublist in dsts for item in sublist}
+        self._to_explore |= {self.cfg.basic_blocks[item] for sublist in dsts for item in sublist}
 
     def simple_edges(self):
-        for bb in self.basic_blocks_as_dict.values():
+        for bb in self.cfg.basic_blocks.values():
+            print(bb)
             if bb.end.name == 'JUMPI':
-                dst = self.basic_blocks_as_dict[bb.end.pc + 1]
+                dst = self.cfg.basic_blocks[bb.end.pc + 1]
                 bb.add_son(dst, self._key)
                 dst.add_father(bb, self._key)
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
-                dst = self.basic_blocks_as_dict[bb.end.pc + 1 + bb.end.operand_size]
+                dst = self.cfg.basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
                 assert dst.start.name == 'JUMPDEST'
                 bb.add_son(dst, self._key)
                 dst.add_father(bb, self._key)
 
     def analyze(self):
-        self.simple_edges()
+        # self.simple_edges()
 
         while self._to_explore:
             self.explore()

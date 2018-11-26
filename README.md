@@ -12,10 +12,16 @@ evm_cfg_builder is a work in progress, but it's already very useful today:
 
 `evm_cfg_builder` is a reliable foundation to build many possible program analysis tools for EVM. This library is covered by our standard bounty policy and we encourage contributions that address any known [issues](https://github.com/trailofbits/evm_cfg_builder/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc). Join us on the [Empire Hacking Slack](https://empireslacking.herokuapp.com) to discuss using or extending evm_cfg_builder.
 
+## How to install
+
+```
+pip install .
+```
+
 ## Example
 
 ```
-$ python evm_cfg_builder/cfg_builder.py tests/fomo3d.evm
+$ evm-cfg-builder tests/fomo3d.evm
 ...
 
 dividendsOf(address), 7 #bbs , view

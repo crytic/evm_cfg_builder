@@ -35,7 +35,7 @@ class CFG(object):
         self.__instructions = dict()
 
         if bytecode is not None:
-            self.__bytecode = bytecode
+            self.__bytecode = bytes(bytecode)
             if instructions is not None:
                 self.__instructions = instructions
                 if basic_blocks is not None:
@@ -64,8 +64,8 @@ class CFG(object):
             see http://solidity.readthedocs.io/en/v0.4.24/metadata.html#encoding-of-the-metadata-hash-in-the-bytecode
         '''
         self.bytecode = re.sub(
-            r'\xa1\x65\x62\x7a\x7a\x72\x30\x58\x20[\x00-\xff]{32}\x00\x29',
-            '',
+            bytes(r'\xa1\x65\x62\x7a\x7a\x72\x30\x58\x20[\x00-\xff]{32}\x00\x29'.encode('charmap')),
+            b'',
             self.bytecode
         )
 
@@ -145,24 +145,24 @@ class CFG(object):
         assert isinstance(func, function.Function)
         self.__functions.append(func)
 
-    def compute_simple_edges(self):
-        for bb in self.basic_blocks.items():
+    def compute_simple_edges(self, key):
+        for bb in self.basic_blocks.values():
             if bb.end.name == 'JUMPI':
                 dst = self.__basic_blocks[bb.end.pc + 1]
-                bb.add_son(dst)
-                dst.add_father(bb)
+                bb.add_son(dst, key)
+                dst.add_father(bb, key)
 
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
                 dst = self.__basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
                 assert dst.start.name == 'JUMPDEST'
-                bb.add_son(dst)
-                dst.add_father(bb)
+                bb.add_son(dst, key)
+                dst.add_father(bb, key)
 
 def is_jump_to_function(block):
     '''
-        Heuristic: 
+        Heuristic:
         Recent solc version add a first check if calldatasize <4 and jump in fallback
     Args;
         block (BasicBlock)

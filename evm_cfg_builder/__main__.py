@@ -27,9 +27,8 @@ def get_info(cfg):
 
     for function in cfg.functions:
         vsa = StackValueAnalysis(
+            cfg,
             function.entry,
-            cfg.basic_blocks,
-            cfg.instructions,
             function.hash_id
         )
         bbs = vsa.analyze()

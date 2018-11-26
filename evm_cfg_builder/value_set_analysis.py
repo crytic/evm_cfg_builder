@@ -590,6 +590,7 @@ class StackValueAnalysis(object):
 
 
     def analyze(self):
+        self.cfg.compute_simple_edges(self._key)
         while self._to_explore:
             self.explore()
 

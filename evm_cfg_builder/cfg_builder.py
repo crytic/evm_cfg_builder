@@ -4,8 +4,8 @@ import sys
 
 from pyevmasm import disassemble_all
 
-from cfg import CFG
-from cfg.function import Function
+from .cfg import CFG
+from .cfg.function import Function
 from .known_hashes import known_hashes
 from .value_set_analysis import StackValueAnalysis
 
@@ -27,9 +27,8 @@ def get_info(cfg):
 
     for function in cfg.functions:
         vsa = StackValueAnalysis(
+            cfg,
             function.entry,
-            cfg.basic_blocks,
-            cfg.instructions,
             function.hash_id
         )
         bbs = vsa.analyze()

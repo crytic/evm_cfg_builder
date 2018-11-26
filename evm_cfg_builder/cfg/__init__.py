@@ -35,7 +35,7 @@ class CFG(object):
         self.__instructions = dict()
 
         if bytecode is not None:
-            self.__bytecode = bytecode
+            self.__bytecode = bytes(bytecode)
             if instructions is not None:
                 self.__instructions = instructions
                 if basic_blocks is not None:
@@ -64,8 +64,8 @@ class CFG(object):
             see http://solidity.readthedocs.io/en/v0.4.24/metadata.html#encoding-of-the-metadata-hash-in-the-bytecode
         '''
         self.bytecode = re.sub(
-            r'\xa1\x65\x62\x7a\x7a\x72\x30\x58\x20[\x00-\xff]{32}\x00\x29',
-            '',
+            bytes(r'\xa1\x65\x62\x7a\x7a\x72\x30\x58\x20[\x00-\xff]{32}\x00\x29'.encode('charmap')),
+            b'',
             self.bytecode
         )
 

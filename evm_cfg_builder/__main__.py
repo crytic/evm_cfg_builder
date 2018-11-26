@@ -1,3 +1,3 @@
-import cfg_builder
+from .cfg_builder import main
 
-cfg_builder.main()
+main()

@@ -1,5 +1,9 @@
+import binascii
 from . import basic_block
-from . import function
+from .function import Function
+
+from ..known_hashes import known_hashes
+from ..value_set_analysis import StackValueAnalysis
 
 import re
 from pyevmasm import disassemble_all
@@ -29,12 +33,18 @@ class ImmutableDict(dict):
         raise NotImplementedError()
 
 class CFG(object):
-    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None):
+
+    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None, remove_metadata=True, analyze=True):
         self.__functions = list()
         self.__basic_blocks = dict()
         self.__instructions = dict()
 
         if bytecode is not None:
+            if isinstance(bytecode, str):
+                if bytecode.startswith('0x'):
+                    bytecode = bytecode[2:]
+                bytecode = bytecode.replace('\n', '')
+                bytecode = binascii.unhexlify(bytecode)
             self.__bytecode = bytes(bytecode)
             if instructions is not None:
                 self.__instructions = instructions
@@ -42,6 +52,37 @@ class CFG(object):
                     self.__basic_blocks = basic_blocks
                     if functions is not None:
                         self.__functions = functions
+
+        if remove_metadata:
+            self.remove_metadata()
+        if analyze:
+            self.analyze()
+
+    def analyze(self):
+        self.compute_basic_blocks()
+        self.compute_functions(self.basic_blocks[0], True)
+        self.add_function(Function(Function.DISPATCHER_ID, 0, self.basic_blocks[0], self))
+
+        for function in self.functions:
+            if function.hash_id in known_hashes:
+                function.name = known_hashes[function.hash_id]
+
+        for function in self.functions:
+            vsa = StackValueAnalysis(
+                self,
+                function.entry,
+                function.hash_id
+            )
+            bbs = vsa.analyze()
+
+            function.basic_blocks = [self.basic_blocks[bb] for bb in bbs]
+
+            if function.hash_id != Function.DISPATCHER_ID:
+                function.check_payable()
+                function.check_view()
+                function.check_pure()
+
+
 
     @property
     def bytecode(self):
@@ -57,7 +98,7 @@ class CFG(object):
         self.__basic_blocks = dict()
         self.__instructions = dict()
         self.__bytecode = dict()
-    
+
     def remove_metadata(self):
         '''
             Init bytecode contains metadata that needs to be removed
@@ -125,7 +166,8 @@ class CFG(object):
             new_function = function.Function(
                 function_hash,
                 function_start,
-                self.__basic_blocks[function_start]
+                self.__basic_blocks[function_start],
+                self
             )
 
             self.__functions.append(new_function)
@@ -142,7 +184,7 @@ class CFG(object):
                 self.compute_functions(false_branch)
 
     def add_function(self, func):
-        assert isinstance(func, function.Function)
+        assert isinstance(func, Function)
         self.__functions.append(func)
 
     def compute_simple_edges(self, key):
@@ -183,6 +225,14 @@ class CFG(object):
                     del bb.sons[key]
                 if key in bb.fathers.keys():
                     del bb.fathers[key]
+
+    def export_basic_blocks(self):
+        return [bb.export() for bb in self.basic_blocks.values()]
+
+    def export_functions(self):
+        return [{'name' : function.name,
+                 'basic_blocks' : function.export_bbs()}
+                for function in self.functions]
 
 def is_jump_to_function(block):
     '''

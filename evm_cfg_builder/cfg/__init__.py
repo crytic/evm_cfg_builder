@@ -147,6 +147,7 @@ class CFG(object):
 
     def compute_simple_edges(self, key):
         for bb in self.basic_blocks.values():
+
             if bb.end.name == 'JUMPI':
                 dst = self.__basic_blocks[bb.end.pc + 1]
                 bb.add_son(dst, key)
@@ -159,6 +160,29 @@ class CFG(object):
                 assert dst.start.name == 'JUMPDEST'
                 bb.add_son(dst, key)
                 dst.add_father(bb, key)
+
+    def compute_reachability(self, entry_point, key):
+        bbs_saw = [entry_point]
+
+        bbs_to_explore = [entry_point]
+        while bbs_to_explore:
+            bb = bbs_to_explore.pop()
+            for son in bb.sons.get(key, []):
+                if not son in bbs_saw:
+                    bbs_saw.append(son)
+                    bbs_to_explore.append(son)
+
+        for bb in bbs_saw:
+            bb.reacheable.append(key)
+
+        # clean son/fathers that are created by compute_simple_edges
+        # but are not reacheable
+        for bb in self.basic_blocks.values():
+            if not bb in bbs_saw:
+                if key in bb.sons.keys():
+                    del bb.sons[key]
+                if key in bb.fathers.keys():
+                    del bb.fathers[key]
 
 def is_jump_to_function(block):
     '''

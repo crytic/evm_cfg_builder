@@ -1,10 +1,18 @@
 class Function(object):
 
+    DISPATCHER_ID = -2
+    FALLBACK_ID = -1
+
     def __init__(self, hash_id, start_addr, entry_basic_block):
         self._hash_id = hash_id
         self._start_addr = start_addr
         self._entry = entry_basic_block
-        self._name = hex(hash_id)
+        if hash_id == self.FALLBACK_ID:
+            self.name = '_fallback'
+        elif hash_id == Function.DISPATCHER_ID:
+            self.name = '_dispatcher'
+        else:
+            self._name = hex(hash_id)
         self._basic_blocks = []
         self._attributes = []
 

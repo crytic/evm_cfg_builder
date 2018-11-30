@@ -1,6 +1,8 @@
 import sys
 import itertools
 
+from .cfg.function import Function
+
 BASIC_BLOCK_END = ['STOP',
                    'SELFDESTRUCT',
                    'RETURN',
@@ -35,6 +37,14 @@ class AbsStackElem(object):
 
     def __init__(self):
         self._vals = []
+        self._is_tainted = False
+
+    @property
+    def is_tainted(self):
+        return self._is_tainted
+
+    def taint(self):
+        self._is_tainted = True
 
     def append(self, nbr):
         '''
@@ -87,6 +97,8 @@ class AbsStackElem(object):
             else:
                 newElem.append(a & b)
 
+        #if self.is_tainted or elem.is_tainted:
+        #    self.taint()
         return newElem
 
     def merge(self, elem):
@@ -108,6 +120,8 @@ class AbsStackElem(object):
         if len(vals) > self.MAXVALS:
             vals = None
         newElem.set_vals(vals)
+        #if self.is_tainted or elem.is_tainted:
+        #    newElem.taint()
         return newElem
 
     def equals(self, elems):
@@ -120,6 +134,9 @@ class AbsStackElem(object):
             bool: True if the two absStackElem are equals. If both are TOP
             returns True
         '''
+        #if self.is_tainted != elems.is_tainted:
+        #    return False
+
         v1 = self.get_vals()
 
         v2 = elems.get_vals()
@@ -145,6 +162,8 @@ class AbsStackElem(object):
         '''
         cp = AbsStackElem()
         cp.set_vals(self.get_vals())
+#        if self.is_tainted:
+   #         cp.taint()
         return cp
 
     def __str__(self):
@@ -360,7 +379,7 @@ class StackValueAnalysis(object):
         self.initStack = initStack
 
         self._entry_point = entry_point
-        
+
         self.cfg = cfg
 
         self._key = key
@@ -401,6 +420,7 @@ class StackValueAnalysis(object):
         op = ins.name
         if op.startswith('PUSH'):
             stack.push(ins.operand)
+
         elif op.startswith('SWAP'):
             nth_elem = int(op[4:])
             stack.swap(nth_elem)
@@ -452,11 +472,6 @@ class StackValueAnalysis(object):
             stack = self._transfer_func_ins(ins, addr, stack)
 
             self.stacksOut[addr] = stack
-#            if addr in [0x196, 0xc3, 0x1a4] or True:
-#                print(ins)
-#                print('PC {}, instack {}'.format(hex(addr), self.stacksIn[addr]))
-#                print('PC {}, outstack {}'.format(hex(addr), self.stacksOut[addr]))
-#                print('')
 
         if ins:
             # if we are going to do a jump / jumpi
@@ -470,6 +485,9 @@ class StackValueAnalysis(object):
         '''
             Transfer function
         '''
+
+        if self._key == Function.DISPATCHER_ID and bb.reacheable:
+            return
         addr = bb.start.pc
         end_ins = bb.end
         end = end_ins.pc
@@ -541,7 +559,8 @@ class StackValueAnalysis(object):
                 converged = True
 
         if not converged:
-            self._sons = bb.sons.get(self._key, []) + self._sons
+            new_sons = bb.sons.get(self._key, [])
+            self._sons = new_sons + self._sons
 
     def add_branches(self, src, dst):
         '''
@@ -593,5 +612,7 @@ class StackValueAnalysis(object):
         self.cfg.compute_simple_edges(self._key)
         while self._to_explore:
             self.explore()
+
+        self.cfg.compute_reachability(self._entry_point, self._key)
 
         return self._basic_blocks_explored

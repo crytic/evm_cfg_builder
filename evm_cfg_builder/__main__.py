@@ -9,21 +9,14 @@ from .cfg.function import Function
 from .known_hashes import known_hashes
 from .value_set_analysis import StackValueAnalysis
 
-DISPATCHER_ID = -2
-FALLBACK_ID = -1
-
+import time
 
 def get_info(cfg):
-    cfg.add_function(Function(DISPATCHER_ID, 0, cfg.basic_blocks[0]))
+    cfg.add_function(Function(Function.DISPATCHER_ID, 0, cfg.basic_blocks[0]))
 
     for function in cfg.functions:
-        if function.hash_id == FALLBACK_ID:
-            function.name = '_fallback'
-        elif function.hash_id == DISPATCHER_ID:
-            function.name = '_dispatcher'
-        else:
-            if function.hash_id in known_hashes:
-                function.name = known_hashes[function.hash_id]
+        if function.hash_id in known_hashes:
+            function.name = known_hashes[function.hash_id]
 
     for function in cfg.functions:
         vsa = StackValueAnalysis(
@@ -31,7 +24,10 @@ def get_info(cfg):
             function.entry,
             function.hash_id
         )
+        print(function.name)
+        start = time.time()
         bbs = vsa.analyze()
+        print(int(time.time() - start))
 
         function.basic_blocks = [cfg.basic_blocks[bb] for bb in bbs]
 

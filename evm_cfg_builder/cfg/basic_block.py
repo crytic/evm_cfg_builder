@@ -10,6 +10,9 @@ class BasicBlock(object):
         self.sons = {}
         self.fathers = {}
 
+        # List of function keys that reaches the BB
+        self.reacheable = []
+
     def add_instruction(self, instruction):
         self.instructions += [instruction]
 
@@ -33,7 +36,7 @@ class BasicBlock(object):
     def add_father(self, father, key):
         if not key in self.fathers:
             self.fathers[key] = []
-        if father not in self.fathers:
+        if father not in self.fathers[key]:
             self.fathers[key].append(father)
 
     def ends_with_jumpi(self):

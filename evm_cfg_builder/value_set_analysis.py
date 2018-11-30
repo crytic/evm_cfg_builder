@@ -37,14 +37,6 @@ class AbsStackElem(object):
 
     def __init__(self):
         self._vals = []
-        self._is_tainted = False
-
-    @property
-    def is_tainted(self):
-        return self._is_tainted
-
-    def taint(self):
-        self._is_tainted = True
 
     def append(self, nbr):
         '''
@@ -97,8 +89,6 @@ class AbsStackElem(object):
             else:
                 newElem.append(a & b)
 
-        #if self.is_tainted or elem.is_tainted:
-        #    self.taint()
         return newElem
 
     def merge(self, elem):
@@ -120,8 +110,6 @@ class AbsStackElem(object):
         if len(vals) > self.MAXVALS:
             vals = None
         newElem.set_vals(vals)
-        #if self.is_tainted or elem.is_tainted:
-        #    newElem.taint()
         return newElem
 
     def equals(self, elems):
@@ -134,8 +122,6 @@ class AbsStackElem(object):
             bool: True if the two absStackElem are equals. If both are TOP
             returns True
         '''
-        #if self.is_tainted != elems.is_tainted:
-        #    return False
 
         v1 = self.get_vals()
 
@@ -162,8 +148,6 @@ class AbsStackElem(object):
         '''
         cp = AbsStackElem()
         cp.set_vals(self.get_vals())
-#        if self.is_tainted:
-   #         cp.taint()
         return cp
 
     def __str__(self):

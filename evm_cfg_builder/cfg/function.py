@@ -188,5 +188,3 @@ class Function(object):
 
             f.write('\n}')
 
-    def export_bbs(self):
-        return [bb.export_from_function(self.key) for bb in self.basic_blocks]

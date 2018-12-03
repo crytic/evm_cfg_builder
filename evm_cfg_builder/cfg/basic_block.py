@@ -59,22 +59,3 @@ class BasicBlock(object):
         assert(len(sons) == 1)
         return sons[key][0]
 
-    def export(self):
-        sons = self.sons.values()
-        sons = [son for sublist in sons for son in sublist]
-        fathers = self.fathers.values()
-        fathers = [father for sublist in fathers for father in sublist]
-        return {'pc_start': self.start.pc,
-                'pc_end': self.end.pc,
-                'instructions': self.instructions,
-                'sons': sons,
-                'fathers': fathers}
-
-    def export_from_function(self, key):
-        sons = self.sons.get(key, [])
-        fathers = self.fathers.get(key, [])
-        return {'pc_start': self.start.pc,
-                'pc_end': self.end.pc,
-                'instructions': self.instructions,
-                'sons': sons,
-                'fathers': fathers}

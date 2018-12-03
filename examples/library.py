@@ -6,7 +6,27 @@ with open('token-runtime.evm') as f:
 
 cfg = CFG(runtime_bytecode)
 
-pprint.pprint(cfg.export_basic_blocks())
+for function in cfg.functions:
+    print('Function {}'.format(function.name))
+    # Each function may have a list of attributes
+    # An attribute can be:
+    # - payable
+    # - view
+    # - pure
+    if function.attributes:
+        print('\tAttributes:')
+        for attr in function.attributes:
+            print('\t\t-{}'.format(attr))
 
-# You can also export the functions information (which includes the basic blocks)
-#pprint.pprint(cfg.export_functions())
+    print('\n\tBasic Blocks:')
+    for basic_block in function.basic_blocks:
+        # Each basic block has a start and end instruction
+        # instructions are pyevmasm.Instruction objects
+        print('\t- 0x{} - 0x{}'.format(basic_block.start.pc,
+                                       basic_block.end.pc))
+
+        for ins in basic_block.instructions:
+            print('\t  {}'.format(ins.name))
+
+        print()
+

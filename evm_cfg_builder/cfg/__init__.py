@@ -226,14 +226,6 @@ class CFG(object):
                 if key in bb.fathers.keys():
                     del bb.fathers[key]
 
-    def export_basic_blocks(self):
-        return [bb.export() for bb in self.basic_blocks.values()]
-
-    def export_functions(self):
-        return [{'name' : function.name,
-                 'basic_blocks' : function.export_bbs()}
-                for function in self.functions]
-
 def is_jump_to_function(block):
     '''
         Heuristic:

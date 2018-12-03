@@ -152,8 +152,8 @@ class Function(object):
 
                 f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
 
-                if self.key in basic_block.sons:
-                    for son in basic_block.sons[self.key]:
+                if self.key in basic_block.incoming_basic_blocks_as_dict:
+                    for son in basic_block.incoming_basic_blocks_as_dict[self.key]:
                         f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
 
                 elif basic_block.ends_with_jump_or_jumpi():
@@ -175,8 +175,8 @@ class Function(object):
 
                 f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
 
-                if self.key in basic_block.sons:
-                    for son in basic_block.sons[self.key]:
+                if self.key in basic_block.incoming_basic_blocks_as_dict:
+                    for son in basic_block.incoming_basic_blocks_as_dict[self.key]:
                         f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
 
                 elif basic_block.ends_with_jump_or_jumpi():

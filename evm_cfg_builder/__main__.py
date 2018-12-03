@@ -11,12 +11,13 @@ from .cfg import CFG
 logging.basicConfig()
 logger = logging.getLogger("evm-cfg-builder")
 
-def output_to_dot(d, filename, functions):
+def output_to_dot(d, filename, cfg):
     if not os.path.exists(d):
         os.makedirs(d)
     filename = os.path.basename(filename)
     filename = os.path.join(d, filename+ '_')
-    for function in functions:
+    cfg.output_to_dot(filename)
+    for function in cfg.functions:
         function.output_to_dot(filename)
 
 def parse_args():
@@ -59,7 +60,7 @@ def main():
         logger.info(function)
 
     if args.dot_directory:
-        output_to_dot(args.dot_directory, args.filename, cfg.functions)
+        output_to_dot(args.dot_directory, args.filename, cfg)
 
 
 if __name__ == '__main__':

@@ -156,7 +156,10 @@ class CFG(object):
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
-                dst = self.__basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
+                try:
+                    dst = self.__basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
+                except KeyError:
+                    continue
                 assert dst.start.name == 'JUMPDEST'
                 bb.add_son(dst, key)
                 dst.add_father(bb, key)

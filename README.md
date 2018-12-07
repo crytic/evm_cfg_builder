@@ -44,6 +44,7 @@ pip install .
 
 ## Requirements
 
+* Python >= 3.6
 * [pyevmasm](https://github.com/trailofbits/pyevmasm)
 
 ## Getting Help

@@ -6,10 +6,11 @@ We encourage contributions that address any known [issues](https://github.com/tr
 
 ## Features
 
-* Reliably recovers a Control Flow Graph (CFG) from EVM bytecode
+* Reliably recovers a Control Flow Graph (CFG) from EVM bytecode using a dedicated Value Set Analysis
 * Recovers functions names
 * Recovers attributes (e.g., payable, view, pure)
 * Outputs the CFG to a dot file
+* Library API
 
 ## Usage
 

@@ -117,24 +117,31 @@ class CFG(object):
     @property
     def basic_blocks(self):
         '''
-        Return an iterator of basic_block
+        Return the list of basic_block
         '''
         bbs = self.__basic_blocks.values()
-        return iter(iter(set(bbs)))
+        return list(set(bbs))
+
+    @property
+    def entry_point(self):
+        '''
+        Return the entry point of the cfg (the basic block at 0x0)
+        '''
+        return self.__basic_blocks[0]
 
     @property
     def functions(self):
         '''
-        Return an iterator of functions
+        Return the list of functions
         '''
-        return iter(self.__functions)
+        return list(self.__functions)
 
     @property
     def instructions(self):
         '''
-        Return an iterator of instructions
+        Return the list of instructions
         '''
-        return iter(self.__instructions.values())
+        return list(self.__instructions.values())
 
     @property
     def basic_blocks_from_addr(self):

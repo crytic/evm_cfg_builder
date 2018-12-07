@@ -1,58 +1,66 @@
-import binascii
 import re
 import sys
-
+import argparse
+import logging
+import os
+from pkg_resources import require
 from pyevmasm import disassemble_all
 
 from .cfg import CFG
-from .cfg.function import Function
-from .known_hashes import known_hashes
-from .value_set_analysis import StackValueAnalysis
 
-import time
+logging.basicConfig()
+logger = logging.getLogger("evm-cfg-builder")
 
-def get_info(cfg):
-    cfg.add_function(Function(Function.DISPATCHER_ID, 0, cfg.basic_blocks[0]))
-
+def output_to_dot(d, filename, cfg):
+    if not os.path.exists(d):
+        os.makedirs(d)
+    filename = os.path.basename(filename)
+    filename = os.path.join(d, filename+ '_')
+    cfg.output_to_dot(filename)
     for function in cfg.functions:
-        if function.hash_id in known_hashes:
-            function.name = known_hashes[function.hash_id]
+        function.output_to_dot(filename)
 
-    for function in cfg.functions:
-        vsa = StackValueAnalysis(
-            cfg,
-            function.entry,
-            function.hash_id
-        )
-        print(function.name)
-        start = time.time()
-        bbs = vsa.analyze()
-        print(int(time.time() - start))
+def parse_args():
+    parser = argparse.ArgumentParser(description='evm-cfg-builder',
+                                     usage="evm-cfg-builder contract.evm [flag]")
 
-        function.basic_blocks = [cfg.basic_blocks[bb] for bb in bbs]
+    parser.add_argument('filename',
+                        help='contract.evm')
 
-        function.check_payable()
-        function.check_view()
-        function.check_pure()
+    parser.add_argument('--export-dot',
+                        help='Export the functions to .dot files in the directory',
+                        action='store',
+                        dest='dot_directory',
+                        default='')
 
-def output_to_dot(functions):
-    for function in functions:
-        function.output_to_dot('test_')
+    parser.add_argument('--version',
+                        help='displays the current version',
+                        version=require('evm-cfg-builder')[0].version,
+                        action='version')
+
+
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    args = parser.parse_args()
+    return args
 
 def main():
-    filename = sys.argv[1]
 
-    with open(filename) as f:
-        bytecode = f.read().replace('\n','')
-        cfg = CFG(binascii.unhexlify(bytecode))
-        cfg.remove_metadata()
-        cfg.compute_basic_blocks()
-        cfg.compute_functions(cfg.basic_blocks[0], True)
-        get_info(cfg)
-        print('End of analysis')
-        for function in cfg.functions:
-            print(function)
-        output_to_dot(cfg.functions)
+    l = logging.getLogger('evm-cfg-builder')
+    l.setLevel(logging.INFO)
+    args = parse_args()
+
+    with open(args.filename) as f:
+        bytecode = f.read().replace('\n', '')
+
+    cfg = CFG(bytecode)
+
+    for function in cfg.functions:
+        logger.info(function)
+
+    if args.dot_directory:
+        output_to_dot(args.dot_directory, args.filename, cfg)
 
 
 if __name__ == '__main__':

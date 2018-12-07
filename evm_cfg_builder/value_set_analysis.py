@@ -372,7 +372,7 @@ class StackValueAnalysis(object):
 
         self._to_explore = {self._entry_point}
 
-        self._sons = []
+        self._incoming_basic_blocks = []
 
     def is_jumpdst(self, addr):
         '''
@@ -385,9 +385,9 @@ class StackValueAnalysis(object):
         Returns:
             bool: True if the instruction is a JUMPDEST
         '''
-        if not addr in self.cfg.instructions:
+        if not addr in self.cfg.instructions_from_addr:
             return False
-        ins = self.cfg.instructions[addr]
+        ins = self.cfg.instructions_from_addr[addr]
         return ins.name == 'JUMPDEST'
 
     def stub(self, ins, addr, stack):
@@ -498,17 +498,17 @@ class StackValueAnalysis(object):
         else:
             stack = Stack()
 
-        # Merge all the stack fathers
+        # Merge all the stack outgoing_basic_blocks
         # We merge only father that were already analyzed
-        fathers = bb.fathers.get(self._key, [])
+        outgoing_basic_blocks = bb.outgoing_basic_blocks(self._key)
 
-        fathers = [f for f in fathers if f.end.pc in self.stacksOut]
+        outgoing_basic_blocks = [f for f in outgoing_basic_blocks if f.end.pc in self.stacksOut]
 
-        if fathers:
-            father = fathers[0]
-            fathers = fathers[1::]
+        if outgoing_basic_blocks:
+            father = outgoing_basic_blocks[0]
+            outgoing_basic_blocks = outgoing_basic_blocks[1::]
             stack.copy_stack(self.stacksOut[father.end.pc])
-            for father in fathers:
+            for father in outgoing_basic_blocks:
                 stack = stack.merge(self.stacksOut[father.end.pc])
         # Analyze the BB
         self._explore_bb(bb, stack)
@@ -543,8 +543,8 @@ class StackValueAnalysis(object):
                 converged = True
 
         if not converged:
-            new_sons = bb.sons.get(self._key, [])
-            self._sons = new_sons + self._sons
+            new_incoming_basic_blocks = bb.incoming_basic_blocks(self._key)
+            self._incoming_basic_blocks = new_incoming_basic_blocks + self._incoming_basic_blocks
 
     def add_branches(self, src, dst):
         '''
@@ -574,22 +574,22 @@ class StackValueAnalysis(object):
         bb = self._to_explore.pop()
 
         self._transfer_func_bb(bb, init)
-        while self._sons:
-            self._transfer_func_bb(self._sons.pop())
+        while self._incoming_basic_blocks:
+            self._transfer_func_bb(self._incoming_basic_blocks.pop())
 
         last_discovered_targets = self.last_discovered_targets
         self.last_discovered_targets = {}
 
         for src, dsts in last_discovered_targets.items():
-            bb_from = self.cfg.basic_blocks[src]
+            bb_from = self.cfg.basic_blocks_from_addr[src]
             for dst in dsts:
-                bb_to = self.cfg.basic_blocks[dst]
+                bb_to = self.cfg.basic_blocks_from_addr[dst]
 
-                bb_from.add_son(bb_to, self._key)
-                bb_to.add_father(bb_from, self._key)
+                bb_from.add_incoming_basic_block(bb_to, self._key)
+                bb_to.add_outgoing_basic_block(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
-        self._to_explore |= {self.cfg.basic_blocks[item] for sublist in dsts for item in sublist}
+        self._to_explore |= {self.cfg.basic_blocks_from_addr[item] for sublist in dsts for item in sublist}
 
 
     def analyze(self):

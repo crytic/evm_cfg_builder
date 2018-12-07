@@ -1,5 +1,9 @@
+import binascii
 from . import basic_block
-from . import function
+from .function import Function
+
+from ..known_hashes import known_hashes
+from ..value_set_analysis import StackValueAnalysis
 
 import re
 from pyevmasm import disassemble_all
@@ -29,12 +33,22 @@ class ImmutableDict(dict):
         raise NotImplementedError()
 
 class CFG(object):
-    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None):
+
+    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None, remove_metadata=True, analyze=True):
         self.__functions = list()
+        # __basic_blocks is a dict that matches
+        # an address to the basic block
+        # The address can be the first or the last
+        # instructions 
         self.__basic_blocks = dict()
         self.__instructions = dict()
 
         if bytecode is not None:
+            if isinstance(bytecode, str):
+                if bytecode.startswith('0x'):
+                    bytecode = bytecode[2:]
+                bytecode = bytecode.replace('\n', '')
+                bytecode = binascii.unhexlify(bytecode)
             self.__bytecode = bytes(bytecode)
             if instructions is not None:
                 self.__instructions = instructions
@@ -42,6 +56,37 @@ class CFG(object):
                     self.__basic_blocks = basic_blocks
                     if functions is not None:
                         self.__functions = functions
+
+        if remove_metadata:
+            self.remove_metadata()
+        if analyze:
+            self.analyze()
+
+    def analyze(self):
+        self.compute_basic_blocks()
+        self.compute_functions(self.__basic_blocks[0], True)
+        self.add_function(Function(Function.DISPATCHER_ID, 0, self.__basic_blocks[0], self))
+
+        for function in self.functions:
+            if function.hash_id in known_hashes:
+                function.name = known_hashes[function.hash_id]
+
+        for function in self.functions:
+            vsa = StackValueAnalysis(
+                self,
+                function.entry,
+                function.hash_id
+            )
+            bbs = vsa.analyze()
+
+            function.basic_blocks = [self.__basic_blocks[bb] for bb in bbs]
+
+            if function.hash_id != Function.DISPATCHER_ID:
+                function.check_payable()
+                function.check_view()
+                function.check_pure()
+
+
 
     @property
     def bytecode(self):
@@ -57,7 +102,7 @@ class CFG(object):
         self.__basic_blocks = dict()
         self.__instructions = dict()
         self.__bytecode = dict()
-    
+
     def remove_metadata(self):
         '''
             Init bytecode contains metadata that needs to be removed
@@ -71,14 +116,43 @@ class CFG(object):
 
     @property
     def basic_blocks(self):
-        return ImmutableDict(self.__basic_blocks)
+        '''
+        Return an iterator of basic_block
+        '''
+        bbs = self.__basic_blocks.values()
+        return iter(iter(set(bbs)))
 
     @property
     def functions(self):
+        '''
+        Return an iterator of functions
+        '''
         return iter(self.__functions)
 
     @property
     def instructions(self):
+        '''
+        Return an iterator of instructions
+        '''
+        return iter(self.__instructions.values())
+
+    @property
+    def basic_blocks_from_addr(self):
+        '''
+        Return a dict that match an addr to a BB
+        The addr can be the first or the last ins of the BB
+        returns:
+            ImmutableDict
+        '''
+        return ImmutableDict(self.__basic_blocks)
+
+    @property
+    def instructions_from_addr(self):
+        '''
+        Return a dict that match an addr to a instruction
+        returns:
+            ImmutableDict
+        '''
         return ImmutableDict(self.__instructions)
 
     def compute_basic_blocks(self):
@@ -90,7 +164,7 @@ class CFG(object):
             None
         '''
         # Do nothing if basic_blocks already exist
-        if self.basic_blocks:
+        if self.__basic_blocks:
             return
 
         bb = basic_block.BasicBlock()
@@ -122,10 +196,11 @@ class CFG(object):
         function_start, function_hash = is_jump_to_function(block)
 
         if(function_start):
-            new_function = function.Function(
+            new_function = Function(
                 function_hash,
                 function_start,
-                self.__basic_blocks[function_start]
+                self.__basic_blocks[function_start],
+                self
             )
 
             self.__functions.append(new_function)
@@ -142,16 +217,16 @@ class CFG(object):
                 self.compute_functions(false_branch)
 
     def add_function(self, func):
-        assert isinstance(func, function.Function)
+        assert isinstance(func, Function)
         self.__functions.append(func)
 
     def compute_simple_edges(self, key):
-        for bb in self.basic_blocks.values():
+        for bb in self.__basic_blocks.values():
 
             if bb.end.name == 'JUMPI':
                 dst = self.__basic_blocks[bb.end.pc + 1]
-                bb.add_son(dst, key)
-                dst.add_father(bb, key)
+                bb.add_incoming_basic_block(dst, key)
+                dst.add_outgoing_basic_block(bb, key)
 
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
@@ -161,8 +236,8 @@ class CFG(object):
                 except KeyError:
                     continue
                 assert dst.start.name == 'JUMPDEST'
-                bb.add_son(dst, key)
-                dst.add_father(bb, key)
+                bb.add_incoming_basic_block(dst, key)
+                dst.add_outgoing_basic_block(bb, key)
 
     def compute_reachability(self, entry_point, key):
         bbs_saw = [entry_point]
@@ -170,7 +245,7 @@ class CFG(object):
         bbs_to_explore = [entry_point]
         while bbs_to_explore:
             bb = bbs_to_explore.pop()
-            for son in bb.sons.get(key, []):
+            for son in bb.incoming_basic_blocks(key):
                 if not son in bbs_saw:
                     bbs_saw.append(son)
                     bbs_to_explore.append(son)
@@ -180,12 +255,28 @@ class CFG(object):
 
         # clean son/fathers that are created by compute_simple_edges
         # but are not reacheable
-        for bb in self.basic_blocks.values():
+        for bb in self.__basic_blocks.values():
             if not bb in bbs_saw:
-                if key in bb.sons.keys():
-                    del bb.sons[key]
-                if key in bb.fathers.keys():
-                    del bb.fathers[key]
+                if key in bb.incoming_basic_blocks_as_dict.keys():
+                    del bb.incoming_basic_blocks_as_dict[key]
+                if key in bb.outgoing_basic_blocks_as_dict.keys():
+                    del bb.outgoing_basic_blocks_as_dict[key]
+
+    def output_to_dot(self, base_filename):
+
+        with open('{}{}.dot'.format(base_filename, 'FULL_GRAPH'), 'w') as f:
+            f.write('digraph{\n')
+            for basic_block in self.basic_blocks:
+                instructions = ['{}:{}'.format(hex(ins.pc),
+                                               str(ins)) for ins in basic_block.instructions]
+                instructions = '\n'.join(instructions)
+
+                f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
+
+                for son in basic_block.all_incoming_basic_blocks:
+                    f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
+
+            f.write('\n}')
 
 def is_jump_to_function(block):
     '''

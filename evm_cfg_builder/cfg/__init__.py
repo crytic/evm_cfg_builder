@@ -67,11 +67,11 @@ class CFG(object):
         self.compute_functions(self.__basic_blocks[0], True)
         self.add_function(Function(Function.DISPATCHER_ID, 0, self.__basic_blocks[0], self))
 
-        for function in self.functions:
+        for function in self.functions.values():
             if function.hash_id in known_hashes:
                 function.name = known_hashes[function.hash_id]
 
-        for function in self.functions:
+        # for function in self.functions.values():
             vsa = StackValueAnalysis(
                 self,
                 function.entry,
@@ -98,7 +98,7 @@ class CFG(object):
         self.__bytecode = bytecode
 
     def clear(self):
-        self.__functions = list()
+        self.__functions = dict()
         self.__basic_blocks = dict()
         self.__instructions = dict()
         self.__bytecode = dict()
@@ -134,7 +134,7 @@ class CFG(object):
         '''
         Return the list of functions
         '''
-        return list(self.__functions)
+        return dict(self.__functions)
 
     @property
     def instructions(self):
@@ -210,7 +210,7 @@ class CFG(object):
                 self
             )
 
-            self.__functions.append(new_function)
+            self.__functions[function_start] = new_function
 
             if block.ends_with_jumpi():
                 false_branch = self.__basic_blocks[block.end.pc + 1]

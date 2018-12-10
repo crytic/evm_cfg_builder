@@ -225,15 +225,15 @@ class CFG(object):
 
     def add_function(self, func):
         assert isinstance(func, Function)
-        self.__functions.append(func)
+        self.__functions[func._start_addr] = func
 
     def compute_simple_edges(self, key):
         for bb in self.__basic_blocks.values():
 
             if bb.end.name == 'JUMPI':
                 dst = self.__basic_blocks[bb.end.pc + 1]
-                bb.add_incoming_basic_block(dst, key)
-                dst.add_outgoing_basic_block(bb, key)
+                bb.add_outgoing_basic_block(dst, key)
+                dst.add_incoming_basic_block(bb, key)
 
             # A bb can be split in the middle if it has a JUMPDEST
             # Because another edge can target the JUMPDEST
@@ -243,8 +243,8 @@ class CFG(object):
                 except KeyError:
                     continue
                 assert dst.start.name == 'JUMPDEST'
-                bb.add_incoming_basic_block(dst, key)
-                dst.add_outgoing_basic_block(bb, key)
+                bb.add_outgoing_basic_block(dst, key)
+                dst.add_incoming_basic_block(bb, key)
 
     def compute_reachability(self, entry_point, key):
         bbs_saw = [entry_point]
@@ -252,7 +252,7 @@ class CFG(object):
         bbs_to_explore = [entry_point]
         while bbs_to_explore:
             bb = bbs_to_explore.pop()
-            for son in bb.incoming_basic_blocks(key):
+            for son in bb.outgoing_basic_blocks(key):
                 if not son in bbs_saw:
                     bbs_saw.append(son)
                     bbs_to_explore.append(son)

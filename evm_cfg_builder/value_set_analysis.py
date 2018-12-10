@@ -372,7 +372,7 @@ class StackValueAnalysis(object):
 
         self._to_explore = {self._entry_point}
 
-        self._incoming_basic_blocks = []
+        self._outgoing_basic_blocks = []
 
     def is_jumpdst(self, addr):
         '''
@@ -498,17 +498,17 @@ class StackValueAnalysis(object):
         else:
             stack = Stack()
 
-        # Merge all the stack outgoing_basic_blocks
+        # Merge all the stack incoming_basic_blocks
         # We merge only father that were already analyzed
-        outgoing_basic_blocks = bb.outgoing_basic_blocks(self._key)
+        incoming_basic_blocks = bb.incoming_basic_blocks(self._key)
 
-        outgoing_basic_blocks = [f for f in outgoing_basic_blocks if f.end.pc in self.stacksOut]
+        incoming_basic_blocks = [f for f in incoming_basic_blocks if f.end.pc in self.stacksOut]
 
-        if outgoing_basic_blocks:
-            father = outgoing_basic_blocks[0]
-            outgoing_basic_blocks = outgoing_basic_blocks[1::]
+        if incoming_basic_blocks:
+            father = incoming_basic_blocks[0]
+            incoming_basic_blocks = incoming_basic_blocks[1::]
             stack.copy_stack(self.stacksOut[father.end.pc])
-            for father in outgoing_basic_blocks:
+            for father in incoming_basic_blocks:
                 stack = stack.merge(self.stacksOut[father.end.pc])
         # Analyze the BB
         self._explore_bb(bb, stack)
@@ -543,8 +543,8 @@ class StackValueAnalysis(object):
                 converged = True
 
         if not converged:
-            new_incoming_basic_blocks = bb.incoming_basic_blocks(self._key)
-            self._incoming_basic_blocks = new_incoming_basic_blocks + self._incoming_basic_blocks
+            new_outgoing_basic_blocks = bb.outgoing_basic_blocks(self._key)
+            self._outgoing_basic_blocks = new_outgoing_basic_blocks + self._outgoing_basic_blocks
 
     def add_branches(self, src, dst):
         '''
@@ -574,8 +574,8 @@ class StackValueAnalysis(object):
         bb = self._to_explore.pop()
 
         self._transfer_func_bb(bb, init)
-        while self._incoming_basic_blocks:
-            self._transfer_func_bb(self._incoming_basic_blocks.pop())
+        while self._outgoing_basic_blocks:
+            self._transfer_func_bb(self._outgoing_basic_blocks.pop())
 
         last_discovered_targets = self.last_discovered_targets
         self.last_discovered_targets = {}
@@ -585,8 +585,8 @@ class StackValueAnalysis(object):
             for dst in dsts:
                 bb_to = self.cfg.basic_blocks_from_addr[dst]
 
-                bb_from.add_incoming_basic_block(bb_to, self._key)
-                bb_to.add_outgoing_basic_block(bb_from, self._key)
+                bb_from.add_outgoing_basic_block(bb_to, self._key)
+                bb_to.add_incoming_basic_block(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
         self._to_explore |= {self.cfg.basic_blocks_from_addr[item] for sublist in dsts for item in sublist}

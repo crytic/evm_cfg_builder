@@ -71,7 +71,6 @@ class CFG(object):
             if function.hash_id in known_hashes:
                 function.name = known_hashes[function.hash_id]
 
-        # for function in self.functions.values():
             vsa = StackValueAnalysis(
                 self,
                 function.entry,
@@ -85,8 +84,6 @@ class CFG(object):
                 function.check_payable()
                 function.check_view()
                 function.check_pure()
-
-
 
     @property
     def bytecode(self):

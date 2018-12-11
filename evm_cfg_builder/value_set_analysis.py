@@ -13,23 +13,23 @@ BASIC_BLOCK_END = ['STOP',
                    'JUMPI']
 
 class AbsStackElem(object):
-    '''
-        Represent an element of the stack
-        An element is a set of potential values.
-        There are at max MAXVALS number of values, otherwise it is set to TOP
+    '''Represent an element of the stack
 
-        TOP is representented as None
+    An element is a set of potential values.
+    There are at max MAXVALS number of values, otherwise it is set to TOP
 
-        []     --> [1, 2, None, 3...]  --> None
-        Init   --> [ up to 10 vals ]   --  TOP
+    TOP is representented as None
 
-        If a value is not known, it is None.
-        Note that we make the difference between the list beeing TOP, and one
-        of the value inside the list beeing TOP. The idea is that even if one
-        of the value is not known, we can list keep track of the known values.
+    []     --> [1, 2, None, 3...]  --> None
+    Init   --> [ up to 10 vals ]   --  TOP
 
-        Thus our analysis is an under-approximation of an over-approximation
-        and is not sound.
+    If a value is not known, it is None.
+    Note that we make the difference between the list beeing TOP, and one
+    of the value inside the list beeing TOP. The idea is that even if one
+    of the value is not known, we can list keep track of the known values.
+
+    Thus our analysis is an under-approximation of an over-approximation
+    and is not sound.
     '''
 
     # Maximum number of values inside the set. If > MAXVALS -> TOP
@@ -43,7 +43,7 @@ class AbsStackElem(object):
             Append value to the element
 
         Args:
-            nbr (int, long, binaryninja.function.InstructionTextToken, None)
+            nbr (int, None)
         '''
         if nbr is None:
             self._vals.append(None)
@@ -319,11 +319,10 @@ class Stack(object):
 
 
 class StackValueAnalysis(object):
-    '''
-        Stack value analysis.
-        After each convergence, we add the new branches, update the binja view
-        and re-analyze the function. The exploration is bounded in case the
-        analysis is lost.
+    '''Stack value analysis.
+
+    After each convergence, we add the new branches and re-analyze the function.
+    The exploration is bounded in case the analysis is lost.
     '''
 
     def __init__(self,
@@ -385,9 +384,10 @@ class StackValueAnalysis(object):
         Returns:
             bool: True if the instruction is a JUMPDEST
         '''
-        if not addr in self.cfg.instructions_from_addr:
+        ins = self.cfg.get_instruction_at(addr)
+        if ins is None:
             return False
-        ins = self.cfg.instructions_from_addr[addr]
+
         return ins.name == 'JUMPDEST'
 
     def stub(self, ins, addr, stack):
@@ -581,15 +581,19 @@ class StackValueAnalysis(object):
         self.last_discovered_targets = {}
 
         for src, dsts in last_discovered_targets.items():
-            bb_from = self.cfg.basic_blocks_from_addr[src]
+            bb_from = self.cfg.get_basic_block_at(src)
             for dst in dsts:
-                bb_to = self.cfg.basic_blocks_from_addr[dst]
+                bb_to = self.cfg.get_basic_block_at(dst)
 
                 bb_from.add_outgoing_basic_block(bb_to, self._key)
                 bb_to.add_incoming_basic_block(bb_from, self._key)
 
         dsts = [dests for (src, dests) in last_discovered_targets.items()]
-        self._to_explore |= {self.cfg.basic_blocks_from_addr[item] for sublist in dsts for item in sublist}
+        self._to_explore |= {
+            self.cfg.get_basic_block_at(item)
+            for sublist in dsts
+            for item in sublist
+        }
 
 
     def analyze(self):

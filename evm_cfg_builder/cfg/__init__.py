@@ -1,5 +1,5 @@
 import binascii
-from . import basic_block
+from .basic_block import BasicBlock
 from .function import Function
 
 from ..known_hashes import known_hashes
@@ -21,53 +21,126 @@ BASIC_BLOCK_END = [
     'JUMPI'
 ]
 
-class ImmutableDict(dict):
-    def __init__(self, map):
-        self.update(map)
-        self.update = self.__update
-
-    def __setitem__(self, key, value):
-        raise KeyError('ImmutableDict is immutable.')
-
-    def __update(self, new_dict):
-        raise NotImplementedError()
-
 class CFG(object):
+    """Implements the control flow graph (CFG) of an EVM bytecode.
+    """
 
-    def __init__(self, bytecode=None, instructions=None, basic_blocks=None, functions=None, remove_metadata=True, analyze=True):
-        self.__functions = list()
+    def __init__(self, bytecode=None, remove_metadata=True, analyze=True):
+        """Initialize an EVM CFG.
+
+        :param bytecode: The EVM bytecode
+        :type bytecode: None, str, bytes
+        :param remove_metadata: Automatically remove metadata
+        :type remove_metadata: bool
+        :param analyze: Automatically analyze the bytecode
+        :type analyze: bool
+        """
+        self._functions = dict()
         # __basic_blocks is a dict that matches
         # an address to the basic block
         # The address can be the first or the last
         # instructions 
-        self.__basic_blocks = dict()
-        self.__instructions = dict()
+        self._basic_blocks = dict()
+        self._instructions = dict()
+
+        assert(isinstance(bytecode, (type(None), str, bytes)))
 
         if bytecode is not None:
             if isinstance(bytecode, str):
                 if bytecode.startswith('0x'):
-                    bytecode = bytecode[2:]
-                bytecode = bytecode.replace('\n', '')
-                bytecode = binascii.unhexlify(bytecode)
-            self.__bytecode = bytes(bytecode)
-            if instructions is not None:
-                self.__instructions = instructions
-                if basic_blocks is not None:
-                    self.__basic_blocks = basic_blocks
-                    if functions is not None:
-                        self.__functions = functions
+                    bytecode = bytes.fromhex(bytecode[2:])
+                else:
+                    bytecode = bytecode.encode('charmap')
+
+        self._bytecode = bytecode
 
         if remove_metadata:
             self.remove_metadata()
         if analyze:
             self.analyze()
 
+    @property
+    def bytecode(self):
+        return self._bytecode
+
+    @bytecode.setter
+    def bytecode(self, bytecode):
+        assert(isinstance(bytecode, (type(None), str, bytes)))
+
+        if bytecode is not None:
+            if isinstance(bytecode, str):
+                if bytecode.startswith('0x'):
+                    bytecode = bytes.fromhex(bytecode[2:])
+                else:
+                    bytecode = bytecode.encode('charmap')
+
+        self.clear()
+        self._bytecode = bytecode
+
+    @property
+    def basic_blocks(self):
+        '''
+        Return the list of basic_block
+        '''
+        bbs = self._basic_blocks.values()
+        return list(set(bbs))
+
+    @property
+    def entry_point(self):
+        '''
+        Return the entry point of the cfg (the basic block at 0x0)
+        '''
+        return self._basic_blocks[0]
+
+    @property
+    def functions(self):
+        '''
+        Return the list of functions
+        '''
+        return list(self._functions.values())
+
+    @property
+    def instructions(self):
+        '''
+        Return the list of instructions
+        '''
+        return list(self._instructions.values())
+
+    def get_instruction_at(self, addr):
+        '''Return the instruction at the provided address.
+
+        :param addr: Address of instruction
+        :type addr: int
+        '''
+        return self._instructions.get(addr)
+
+    def get_basic_block_at(self, addr):
+        '''Return the basic block at the provided address.
+
+        The address is either the starting or ending instruction of the
+        basic block.
+
+        :param addr: Address of basic block start or end
+        :type addr: int
+        :return: BasicBlock, None -- the requested basic block
+        '''
+        return self._basic_blocks.get(addr)
+
+    def get_function_at(self, addr):
+        '''Return the function at the provided address.
+
+        :param addr: Address of the function
+        :type addr: int
+        :return: Function, None -- the requested function
+        '''
+        return self._functions.get(addr)
+
     def analyze(self):
         self.compute_basic_blocks()
-        self.compute_functions(self.__basic_blocks[0], True)
-        self.add_function(Function(Function.DISPATCHER_ID, 0, self.__basic_blocks[0], self))
+        self.compute_functions(self._basic_blocks[0], True)
+        self.add_function(Function(Function.DISPATCHER_ID, 0, self._basic_blocks[0], self))
 
-        for function in self.functions.values():
+        for function in self.functions:
             if function.hash_id in known_hashes:
                 function.name = known_hashes[function.hash_id]
 
@@ -78,27 +151,18 @@ class CFG(object):
             )
             bbs = vsa.analyze()
 
-            function.basic_blocks = [self.__basic_blocks[bb] for bb in bbs]
+            function.basic_blocks = [self._basic_blocks[bb] for bb in bbs]
 
             if function.hash_id != Function.DISPATCHER_ID:
                 function.check_payable()
                 function.check_view()
                 function.check_pure()
 
-    @property
-    def bytecode(self):
-        return self.__bytecode
-
-    @bytecode.setter
-    def bytecode(self, bytecode):
-        self.clear()
-        self.__bytecode = bytecode
-
     def clear(self):
-        self.__functions = dict()
-        self.__basic_blocks = dict()
-        self.__instructions = dict()
-        self.__bytecode = dict()
+        self._functions = dict()
+        self._basic_blocks = dict()
+        self._instructions = dict()
+        self._bytecode = bytes()
 
     def remove_metadata(self):
         '''
@@ -111,54 +175,6 @@ class CFG(object):
             self.bytecode
         )
 
-    @property
-    def basic_blocks(self):
-        '''
-        Return the list of basic_block
-        '''
-        bbs = self.__basic_blocks.values()
-        return list(set(bbs))
-
-    @property
-    def entry_point(self):
-        '''
-        Return the entry point of the cfg (the basic block at 0x0)
-        '''
-        return self.__basic_blocks[0]
-
-    @property
-    def functions(self):
-        '''
-        Return the list of functions
-        '''
-        return dict(self.__functions)
-
-    @property
-    def instructions(self):
-        '''
-        Return the list of instructions
-        '''
-        return list(self.__instructions.values())
-
-    @property
-    def basic_blocks_from_addr(self):
-        '''
-        Return a dict that match an addr to a BB
-        The addr can be the first or the last ins of the BB
-        returns:
-            ImmutableDict
-        '''
-        return ImmutableDict(self.__basic_blocks)
-
-    @property
-    def instructions_from_addr(self):
-        '''
-        Return a dict that match an addr to a instruction
-        returns:
-            ImmutableDict
-        '''
-        return ImmutableDict(self.__instructions)
-
     def compute_basic_blocks(self):
         '''
             Split instructions into BasicBlock
@@ -168,32 +184,32 @@ class CFG(object):
             None
         '''
         # Do nothing if basic_blocks already exist
-        if self.__basic_blocks:
+        if self._basic_blocks:
             return
 
-        bb = basic_block.BasicBlock()
+        bb = BasicBlock()
 
         for instruction in disassemble_all(self.bytecode):
-            self.__instructions[instruction.pc] = instruction
+            self._instructions[instruction.pc] = instruction
 
             if instruction.name == 'JUMPDEST':
                 # JUMPDEST indicates a new BasicBlock. Set the end pc
                 # of the current block, and switch to a new one.
-                if bb.instructions:
-                    self.__basic_blocks[bb.end.pc] = bb
+                if bb._instructions:
+                    self._basic_blocks[bb.end.pc] = bb
 
-                bb = basic_block.BasicBlock()
+                bb = BasicBlock()
 
-                self.__basic_blocks[instruction.pc] = bb
+                self._basic_blocks[instruction.pc] = bb
 
             bb.add_instruction(instruction)
 
             if bb.start.pc == instruction.pc:
-                self.__basic_blocks[instruction.pc] = bb
+                self._basic_blocks[instruction.pc] = bb
 
             if bb.end.name in BASIC_BLOCK_END:
-                self.__basic_blocks[bb.end.pc] = bb
-                bb = basic_block.BasicBlock()
+                self._basic_blocks[bb.end.pc] = bb
+                bb = BasicBlock()
 
     def compute_functions(self, block, is_entry_block=False):
 
@@ -203,32 +219,32 @@ class CFG(object):
             new_function = Function(
                 function_hash,
                 function_start,
-                self.__basic_blocks[function_start],
+                self._basic_blocks[function_start],
                 self
             )
 
-            self.__functions[function_start] = new_function
+            self._functions[function_start] = new_function
 
             if block.ends_with_jumpi():
-                false_branch = self.__basic_blocks[block.end.pc + 1]
+                false_branch = self._basic_blocks[block.end.pc + 1]
                 self.compute_functions(false_branch)
 
             return
 
         elif is_entry_block:
             if block.ends_with_jumpi():
-                false_branch = self.__basic_blocks[block.end.pc + 1]
+                false_branch = self._basic_blocks[block.end.pc + 1]
                 self.compute_functions(false_branch)
 
     def add_function(self, func):
         assert isinstance(func, Function)
-        self.__functions[func._start_addr] = func
+        self._functions[func._start_addr] = func
 
     def compute_simple_edges(self, key):
-        for bb in self.__basic_blocks.values():
+        for bb in self._basic_blocks.values():
 
             if bb.end.name == 'JUMPI':
-                dst = self.__basic_blocks[bb.end.pc + 1]
+                dst = self._basic_blocks[bb.end.pc + 1]
                 bb.add_outgoing_basic_block(dst, key)
                 dst.add_incoming_basic_block(bb, key)
 
@@ -236,7 +252,7 @@ class CFG(object):
             # Because another edge can target the JUMPDEST
             if bb.end.name not in BASIC_BLOCK_END:
                 try:
-                    dst = self.__basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
+                    dst = self._basic_blocks[bb.end.pc + 1 + bb.end.operand_size]
                 except KeyError:
                     continue
                 assert dst.start.name == 'JUMPDEST'
@@ -259,12 +275,12 @@ class CFG(object):
 
         # clean son/fathers that are created by compute_simple_edges
         # but are not reacheable
-        for bb in self.__basic_blocks.values():
+        for bb in self._basic_blocks.values():
             if not bb in bbs_saw:
-                if key in bb.incoming_basic_blocks_as_dict.keys():
-                    del bb.incoming_basic_blocks_as_dict[key]
-                if key in bb.outgoing_basic_blocks_as_dict.keys():
-                    del bb.outgoing_basic_blocks_as_dict[key]
+                if key in bb._incoming_basic_blocks:
+                    bb._incoming_basic_blocks.pop(key)
+                if key in bb._outgoing_basic_blocks:
+                    bb._outgoing_basic_blocks.pop(key)
 
     def output_to_dot(self, base_filename):
 
@@ -286,7 +302,7 @@ def is_jump_to_function(block):
     '''
         Heuristic:
         Recent solc version add a first check if calldatasize <4 and jump in fallback
-    Args;
+    Args:
         block (BasicBlock)
     Returns:
         (int): function hash, or None

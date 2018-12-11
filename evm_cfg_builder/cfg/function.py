@@ -20,6 +20,9 @@ class Function(object):
         self._attributes = []
         self._cfg = cfg
 
+    def __repr__(self):
+        return '<cfg Function@{:x}>'.format(self.start_addr)
+
     @property
     def start_addr(self):
         return self._start_addr

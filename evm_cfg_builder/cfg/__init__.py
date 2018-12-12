@@ -58,6 +58,12 @@ class CFG(object):
         if analyze:
             self.analyze()
 
+    def __repr__(self):
+        return "<CFG: {} Functions, {} Basic Blocks>".format(
+            len(self.functions),
+            len(self.basic_blocks)
+        )
+
     @property
     def bytecode(self):
         return self._bytecode

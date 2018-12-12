@@ -21,20 +21,12 @@ class BasicBlock(object):
 
     @property
     def start(self):
-        '''
-        First instruction
-        Returns:
-            pyevmasm.Instruction
-        '''
+        '''First instruction of the basic block.'''
         return self._instructions[0]
 
     @property
     def end(self):
-        '''
-        Last instruction
-        Returns:
-            pyevmasm.Instruction
-        '''
+        '''Last instruction of the basic block.'''
         return self._instructions[-1]
 
     @property

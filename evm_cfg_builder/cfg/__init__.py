@@ -1,14 +1,13 @@
-import binascii
 from .basic_block import BasicBlock
 from .function import Function
+
+__all__ = ["CFG", "BasicBlock", "Function"]
 
 from ..known_hashes import known_hashes
 from ..value_set_analysis import StackValueAnalysis
 
 import re
 from pyevmasm import disassemble_all
-
-__all__ = ["basic_block", "function"]
 
 BASIC_BLOCK_END = [
     'STOP',

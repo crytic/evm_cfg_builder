@@ -6,7 +6,7 @@ with open('token-runtime.evm') as f:
 
 cfg = CFG(runtime_bytecode)
 
-for function in cfg.functions:
+for function in cfg.functions.values():
     print('Function {}'.format(function.name))
     # Each function may have a list of attributes
     # An attribute can be:

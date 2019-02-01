@@ -50,6 +50,9 @@ class CFG(object):
                     bytecode = bytes.fromhex(bytecode[2:])
                 else:
                     bytecode = bytecode.encode('charmap')
+            else:
+                if bytecode.startswith(b'0x'):
+                    bytecode = bytes.fromhex(bytecode[2:].decode())
 
         self._bytecode = bytecode
 

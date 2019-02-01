@@ -52,7 +52,7 @@ def main():
     args = parse_args()
 
     with open(args.filename, 'rb') as f:
-        bytecode = f.read().replace(b'\n', b'')
+        bytecode = f.read()
 
     cfg = CFG(bytecode)
 

@@ -44,20 +44,20 @@ class CFG(object):
         self._analysis_complete = False
 
     @classmethod
-    def from_byte_str(cls, bytecode: str) -> cls:
+    def from_byte_str(cls, bytecode: str):
         return cls(bytes(bytecode.encode('charmap')))
 
     @classmethod
-    def from_hex_str(cls, bytecode: str) -> cls:
+    def from_hex_str(cls, bytecode: str):
         bytecode = bytes.fromhex(bytecode[2:])
         return cls(bytecode)
 
     @classmethod
-    def from_bytes(cls, bytecode: bytes) -> cls:
+    def from_bytes(cls, bytecode: bytes):
         return cls(bytecode)
 
     @classmethod
-    def from_hex_bytes(cls, bytecode: bytes) -> cls:
+    def from_hex_bytes(cls, bytecode: bytes):
         return cls(bytes.fromhex(bytecode[2:].decode()))
 
     @property

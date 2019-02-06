@@ -7,7 +7,7 @@ from ..known_hashes import known_hashes
 from ..value_set_analysis import StackValueAnalysis
 
 import re
-from pyevmasm import disassemble_all
+from pyevmasm import disassemble_all, Instruction
 
 BASIC_BLOCK_END = [
     'STOP',
@@ -24,15 +24,11 @@ class CFG(object):
     """Implements the control flow graph (CFG) of an EVM bytecode.
     """
 
-    def __init__(self, bytecode=None, remove_metadata=True, analyze=True):
+    def __init__(self, bytecode: bytes=None):
         """Initialize an EVM CFG.
 
         :param bytecode: The EVM bytecode
-        :type bytecode: None, str, bytes
-        :param remove_metadata: Automatically remove metadata
-        :type remove_metadata: bool
-        :param analyze: Automatically analyze the bytecode
-        :type analyze: bool
+        :type bytecode: None, bytes
         """
         self._functions = dict()
         # __basic_blocks is a dict that matches
@@ -42,51 +38,44 @@ class CFG(object):
         self._basic_blocks = dict()
         self._instructions = dict()
 
-        assert(isinstance(bytecode, (type(None), str, bytes)))
-
-        if bytecode is not None:
-            if isinstance(bytecode, str):
-                if bytecode.startswith('0x'):
-                    bytecode = bytes.fromhex(bytecode[2:])
-                else:
-                    bytecode = bytecode.encode('charmap')
-            else:
-                if bytecode.startswith(b'0x'):
-                    bytecode = bytes.fromhex(bytecode[2:].decode())
+        assert(isinstance(bytecode, (type(None), bytes)))
 
         self._bytecode = bytecode
+        self._analysis_complete = False
 
-        if remove_metadata:
-            self.remove_metadata()
-        if analyze:
-            self.analyze()
+    @classmethod
+    def from_byte_str(cls, bytecode: str) -> cls:
+        return cls(bytes(bytecode.encode('charmap')))
 
-    def __repr__(self):
+    @classmethod
+    def from_hex_str(cls, bytecode: str) -> cls:
+        bytecode = bytes.fromhex(bytecode[2:])
+        return cls(bytecode)
+
+    @classmethod
+    def from_bytes(cls, bytecode: bytes) -> cls:
+        return cls(bytecode)
+
+    @classmethod
+    def from_hex_bytes(cls, bytecode: bytes) -> cls:
+        return cls(bytes.fromhex(bytecode[2:].decode()))
+
+    @property
+    def analysis_complete(self) -> bool:
+        return self._analysis_complete
+
+    def __repr__(self) -> str:
         return "<CFG: {} Functions, {} Basic Blocks>".format(
             len(self.functions),
             len(self.basic_blocks)
         )
 
     @property
-    def bytecode(self):
+    def bytecode(self) -> bytes:
         return self._bytecode
 
-    @bytecode.setter
-    def bytecode(self, bytecode):
-        assert(isinstance(bytecode, (type(None), str, bytes)))
-
-        if bytecode is not None:
-            if isinstance(bytecode, str):
-                if bytecode.startswith('0x'):
-                    bytecode = bytes.fromhex(bytecode[2:])
-                else:
-                    bytecode = bytecode.encode('charmap')
-
-        self.clear()
-        self._bytecode = bytecode
-
     @property
-    def basic_blocks(self):
+    def basic_blocks(self) -> list:
         '''
         Return the list of basic_block
         '''
@@ -94,27 +83,27 @@ class CFG(object):
         return list(set(bbs))
 
     @property
-    def entry_point(self):
+    def entry_point(self) -> BasicBlock:
         '''
         Return the entry point of the cfg (the basic block at 0x0)
         '''
         return self._basic_blocks[0]
 
     @property
-    def functions(self):
+    def functions(self) -> list:
         '''
         Return the list of functions
         '''
         return list(self._functions.values())
 
     @property
-    def instructions(self):
+    def instructions(self) -> list:
         '''
         Return the list of instructions
         '''
         return list(self._instructions.values())
 
-    def get_instruction_at(self, addr):
+    def get_instruction_at(self, addr: int) -> Instruction:
         '''Return the instruction at the provided address.
 
         :param addr: Address of instruction
@@ -122,7 +111,7 @@ class CFG(object):
         '''
         return self._instructions.get(addr)
 
-    def get_basic_block_at(self, addr):
+    def get_basic_block_at(self, addr: int) -> BasicBlock:
         '''Return the basic block at the provided address.
 
         The address is either the starting or ending instruction of the
@@ -134,7 +123,7 @@ class CFG(object):
         '''
         return self._basic_blocks.get(addr)
 
-    def get_function_at(self, addr):
+    def get_function_at(self, addr: int) -> Function:
         '''Return the function at the provided address.
 
         :param addr: Address of the function
@@ -145,8 +134,10 @@ class CFG(object):
 
     def analyze(self):
         self.compute_basic_blocks()
-        self.compute_functions(self._basic_blocks[0], True)
-        self.add_function(Function(Function.DISPATCHER_ID, 0, self._basic_blocks[0], self))
+
+        if self._basic_blocks:
+            self.compute_functions(self._basic_blocks[0], True)
+            self.add_function(Function(Function.DISPATCHER_ID, 0, self._basic_blocks[0], self))
 
         for function in self.functions:
             if function.hash_id in known_hashes:
@@ -166,17 +157,23 @@ class CFG(object):
                 function.check_view()
                 function.check_pure()
 
+        self._analysis_complete = True
+
     def clear(self):
         self._functions = dict()
         self._basic_blocks = dict()
         self._instructions = dict()
         self._bytecode = bytes()
+        self._analysis_complete = False
 
     def remove_metadata(self):
         '''
             Init bytecode contains metadata that needs to be removed
             see http://solidity.readthedocs.io/en/v0.4.24/metadata.html#encoding-of-the-metadata-hash-in-the-bytecode
         '''
+        if self._bytecode is None:
+            return
+
         self.bytecode = re.sub(
             bytes(r'\xa1\x65\x62\x7a\x7a\x72\x30\x58\x20[\x00-\xff]{32}\x00\x29'.encode('charmap')),
             b'',
@@ -191,7 +188,11 @@ class CFG(object):
         Returns:
             None
         '''
-        # Do nothing if basic_blocks already exist
+        # Do nothing if bytecode is None
+        if self._bytecode is None:
+            return
+
+        # Do nothing if basic_blocks already exists
         if self._basic_blocks:
             return
 
@@ -219,8 +220,7 @@ class CFG(object):
                 self._basic_blocks[bb.end.pc] = bb
                 bb = BasicBlock()
 
-    def compute_functions(self, block, is_entry_block=False):
-
+    def compute_functions(self, block: BasicBlock, is_entry_block:bool=False):
         function_start, function_hash = is_jump_to_function(block)
 
         if(function_start):
@@ -244,7 +244,7 @@ class CFG(object):
                 false_branch = self._basic_blocks[block.end.pc + 1]
                 self.compute_functions(false_branch)
 
-    def add_function(self, func):
+    def add_function(self, func: Function):
         assert isinstance(func, Function)
         self._functions[func._start_addr] = func
 
@@ -267,7 +267,7 @@ class CFG(object):
                 bb.add_outgoing_basic_block(dst, key)
                 dst.add_incoming_basic_block(bb, key)
 
-    def compute_reachability(self, entry_point, key):
+    def compute_reachability(self, entry_point: int, key):
         bbs_saw = [entry_point]
 
         bbs_to_explore = [entry_point]
@@ -290,7 +290,7 @@ class CFG(object):
                 if key in bb._outgoing_basic_blocks:
                     bb._outgoing_basic_blocks.pop(key)
 
-    def output_to_dot(self, base_filename):
+    def output_to_dot(self, base_filename: str):
 
         with open('{}{}.dot'.format(base_filename, 'FULL_GRAPH'), 'w') as f:
             f.write('digraph{\n')
@@ -306,7 +306,7 @@ class CFG(object):
 
             f.write('\n}')
 
-def is_jump_to_function(block):
+def is_jump_to_function(block: BasicBlock) -> bool:
     '''
         Heuristic:
         Recent solc version add a first check if calldatasize <4 and jump in fallback

@@ -54,7 +54,12 @@ def main():
     with open(args.filename, 'rb') as f:
         bytecode = f.read()
 
-    cfg = CFG(bytecode)
+    if bytecode.startswith(b'0x'):
+        cfg = CFG.from_hex_bytes(bytecode)
+    else:
+        cfg = CFG.from_bytes(bytecode)
+
+    cfg.analyze()
 
     for function in cfg.functions:
         logger.info(function)

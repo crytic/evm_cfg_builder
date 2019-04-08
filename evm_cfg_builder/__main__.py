@@ -51,8 +51,8 @@ def main():
     l.setLevel(logging.INFO)
     args = parse_args()
 
-    with open(args.filename) as f:
-        bytecode = f.read().replace('\n', '')
+    with open(args.filename, 'rb') as f:
+        bytecode = f.read()
 
     cfg = CFG(bytecode)
 

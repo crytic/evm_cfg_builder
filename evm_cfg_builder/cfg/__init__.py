@@ -46,6 +46,7 @@ class CFG(object):
 
         if bytecode is not None:
             if isinstance(bytecode, str):
+                bytecode = bytecode.replace('\n','')
                 if bytecode.startswith('0x'):
                     bytecode = bytes.fromhex(bytecode[2:])
                 else:

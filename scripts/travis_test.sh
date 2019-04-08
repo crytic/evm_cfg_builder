@@ -6,9 +6,7 @@ DIFF=$(diff tmp_explore_cfg.txt examples/expected_output/explore_cfg.txt)
 if [  "$DIFF" != "" ] 
 then
     echo "explore_cfg failed"
-    cat tmp_explore_cfg.txt 
-    echo ""
-    cat examples/expected_output/explore_cfg.txt
+    echo $DIFF
     exit -1
 fi
 
@@ -18,8 +16,22 @@ DIFF=$(diff tmp_explore_functions.txt examples/expected_output/explore_functions
 if [  "$DIFF" != "" ] 
 then
     echo "explore_functions failed"
-    cat tmp_explore_functions.txt 
-    echo ""
-    cat examples/expected_output/explore_functions.txt
-    exit -1
+    echo $DIFF
+    #exit -1
 fi
+
+evm-cfg-builder tests/fomo3d.evm --export-dot fomo3d-output
+for f in `find tests/expected-fomo3d-output/*`
+do
+    # Compare the sorted version of the dot files
+    # It's not perfect, but it avoids dealing with similar dot files
+    # generated in a different order
+    DIFF=$(diff <(sort $f) <(sort fomo3d-output/${f##*/}))
+    if [  "$DIFF" != "" ] 
+    then
+        echo "fomo3d dot failed"
+        echo $f
+        echo $DIFF
+        exit -1
+    fi
+done

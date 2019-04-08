@@ -46,14 +46,14 @@ class CFG(object):
 
         if bytecode is not None:
             if isinstance(bytecode, str):
-                bytecode = bytecode.replace('\n','')
+                bytecode = bytecode.replace('\n', '')
                 if bytecode.startswith('0x'):
                     bytecode = bytes.fromhex(bytecode[2:])
                 else:
                     bytecode = bytecode.encode('charmap')
             else:
                 if bytecode.startswith(b'0x'):
-                    bytecode = bytes.fromhex(bytecode[2:].decode())
+                    bytecode = bytes.fromhex(bytecode[2:].decode().replace('\n', ''))
 
         self._bytecode = bytecode
 

@@ -13,3 +13,8 @@ function install_solc {
 }
 
 install_solc
+
+git clone https://github.com/crytic/crytic-compile
+cd crytic-compile
+pip install .
+

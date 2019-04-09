@@ -6,6 +6,8 @@ import os
 from pkg_resources import require
 from pyevmasm import disassemble_all
 
+from crytic_compile import cryticparser, CryticCompile
+
 from .cfg import CFG
 
 logging.basicConfig()
@@ -31,13 +33,14 @@ def parse_args():
                         help='Export the functions to .dot files in the directory',
                         action='store',
                         dest='dot_directory',
-                        default='')
+                        default='crytic-export/evm')
 
     parser.add_argument('--version',
                         help='displays the current version',
                         version=require('evm-cfg-builder')[0].version,
                         action='version')
 
+    cryticparser.init(parser)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -45,22 +48,38 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def main():
-
-    l = logging.getLogger('evm-cfg-builder')
-    l.setLevel(logging.INFO)
-    args = parse_args()
-
-    with open(args.filename, 'rb') as f:
-        bytecode = f.read()
-
+def _run(bytecode, filename, args):
     cfg = CFG(bytecode)
 
     for function in cfg.functions:
         logger.info(function)
 
     if args.dot_directory:
-        output_to_dot(args.dot_directory, args.filename, cfg)
+        output_to_dot(args.dot_directory, filename, cfg)
+
+def main():
+
+    l = logging.getLogger('evm-cfg-builder')
+    l.setLevel(logging.INFO)
+    args = parse_args()
+
+    if args.filename.endswith('.sol') or os.path.isdir(args.filename):
+        filename = args.filename
+        del args.filename
+        cryticCompile = CryticCompile(filename, **vars(args))
+        for contract in cryticCompile.contracts_name:
+            logger.info(f'Analyze {contract}')
+            _run(cryticCompile.init_bytecode(contract), f'{filename}-{contract}-init', args)
+            _run(cryticCompile.runtime_bytecode(contract),  f'{filename}-{contract}-runtime', args)
+
+    else:
+        with open(args.filename, 'rb') as f:
+            bytecode = f.read()
+        logger.info(f'Analyze {args.filename}')
+        _run(bytecode, args.filename, args)
+
+
+
 
 
 if __name__ == '__main__':

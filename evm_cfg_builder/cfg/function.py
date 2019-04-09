@@ -155,13 +155,13 @@ class Function(object):
 
                 f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
 
-                if self.key in basic_block.incoming_basic_blocks_as_dict:
-                    for son in basic_block.incoming_basic_blocks_as_dict[self.key]:
-                        f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
+                for son in basic_block.outgoing_basic_blocks(self.key):
+                    f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
 
-                elif basic_block.ends_with_jump_or_jumpi():
-                    logger.error('Missing branches {}:{}'.format(self.name,
-                                                                 hex(basic_block.end.pc)))
+                if not basic_block.outgoing_basic_blocks(self.key):
+                    if basic_block.ends_with_jump_or_jumpi():
+                        logger.error('Missing branches {}:{}'.format(self.name,
+                                                                     hex(basic_block.end.pc)))
 
             f.write('\n}')
 
@@ -178,13 +178,13 @@ class Function(object):
 
                 f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
 
-                if self.key in basic_block.incoming_basic_blocks_as_dict:
-                    for son in basic_block.incoming_basic_blocks_as_dict[self.key]:
-                        f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
+                for son in basic_block.outgoing_basic_blocks(self.key):
+                    f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
 
-                elif basic_block.ends_with_jump_or_jumpi():
-                    logger.error('Missing branches {}:{}'.format(self.name,
-                                                                 hex(basic_block.end.pc)))
+                if not basic_block.outgoing_basic_blocks(self.key):
+                    if basic_block.ends_with_jump_or_jumpi():
+                        logger.error('Missing branches {}:{}'.format(self.name,
+                                                                     hex(basic_block.end.pc)))
             for function in self._cfg.functions:
                 if function != self:
                     f.write('{}[label="Call {}"]\n'.format(function.start_addr, function.name))

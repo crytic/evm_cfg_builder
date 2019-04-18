@@ -6,7 +6,7 @@ import os
 from pkg_resources import require
 from pyevmasm import disassemble_all
 
-from crytic_compile import cryticparser, CryticCompile
+from crytic_compile import cryticparser, CryticCompile, InvalidCompilation
 
 from .cfg import CFG
 
@@ -66,11 +66,14 @@ def main():
     if args.filename.endswith('.sol') or os.path.isdir(args.filename):
         filename = args.filename
         del args.filename
-        cryticCompile = CryticCompile(filename, **vars(args))
-        for contract in cryticCompile.contracts_name:
-            logger.info(f'Analyze {contract}')
-            _run(cryticCompile.init_bytecode(contract), f'{filename}-{contract}-init', args)
-            _run(cryticCompile.runtime_bytecode(contract),  f'{filename}-{contract}-runtime', args)
+        try:
+            cryticCompile = CryticCompile(filename, **vars(args))
+            for contract in cryticCompile.contracts_name:
+                logger.info(f'Analyze {contract}')
+                _run(cryticCompile.init_bytecode(contract), f'{filename}-{contract}-init', args)
+                _run(cryticCompile.runtime_bytecode(contract),  f'{filename}-{contract}-runtime', args)
+        except InvalidCompilation as e:
+            logger.error(e)
 
     else:
         with open(args.filename, 'rb') as f:

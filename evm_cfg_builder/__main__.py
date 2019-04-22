@@ -68,7 +68,7 @@ def main():
         del args.filename
         try:
             cryticCompile = CryticCompile(filename, **vars(args))
-            for contract in cryticCompile.contracts_name:
+            for contract in cryticCompile.contracts_names:
                 logger.info(f'Analyze {contract}')
                 _run(cryticCompile.init_bytecode(contract), f'{filename}-{contract}-init', args)
                 _run(cryticCompile.runtime_bytecode(contract),  f'{filename}-{contract}-runtime', args)

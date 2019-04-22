@@ -69,9 +69,11 @@ def main():
         try:
             cryticCompile = CryticCompile(filename, **vars(args))
             for contract in cryticCompile.contracts_names:
-                logger.info(f'Analyze {contract}')
-                _run(cryticCompile.bytecode_init(contract), f'{filename}-{contract}-init', args)
-                _run(cryticCompile.bytecode_runtime(contract),  f'{filename}-{contract}-runtime', args)
+                bytecode_init = cryticCompile.bytecode_init(contract)
+                if bytecode_init:
+                    logger.info(f'Analyze {contract}')
+                    _run(bytecode_init, f'{filename}-{contract}-init', args)
+                    _run(cryticCompile.bytecode_runtime(contract),  f'{filename}-{contract}-runtime', args)
         except InvalidCompilation as e:
             logger.error(e)
 

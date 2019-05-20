@@ -6,7 +6,7 @@ import os
 from pkg_resources import require
 from pyevmasm import disassemble_all
 
-from crytic_compile import cryticparser, CryticCompile, InvalidCompilation
+from crytic_compile import cryticparser, CryticCompile, InvalidCompilation, is_supported
 
 from .cfg import CFG
 
@@ -63,7 +63,7 @@ def main():
     l.setLevel(logging.INFO)
     args = parse_args()
 
-    if args.filename.endswith('.sol') or os.path.isdir(args.filename):
+    if is_supported(args.filename):
         filename = args.filename
         del args.filename
         try:

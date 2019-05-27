@@ -8,7 +8,7 @@ setup(
     version='0.2.0',
     packages=find_packages(),
     python_requires='>=3.6',
-    install_requires=['pyevmasm>=0.1.1'],
+    install_requires=['pyevmasm>=0.1.1', 'crytic-compile>=0.1.1'],
     license='AGPL-3.0',
     long_description=open('README.md').read(),
     entry_points={

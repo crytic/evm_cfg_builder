@@ -6,7 +6,8 @@ import os
 from pkg_resources import require
 from pyevmasm import disassemble_all
 
-from crytic_compile import cryticparser, CryticCompile, InvalidCompilation
+from crytic_compile import cryticparser, CryticCompile, InvalidCompilation, is_supported
+from . import known_hashes
 
 from .cfg import CFG
 
@@ -63,7 +64,7 @@ def main():
     l.setLevel(logging.INFO)
     args = parse_args()
 
-    if args.filename.endswith('.sol') or os.path.isdir(args.filename):
+    if is_supported(args.filename):
         filename = args.filename
         del args.filename
         try:
@@ -71,6 +72,8 @@ def main():
             for contract in cryticCompile.contracts_names:
                 bytecode_init = cryticCompile.bytecode_init(contract)
                 if bytecode_init:
+                    for signature, hash in cryticCompile.hashes(contract).items():
+                        known_hashes[hash] = signature
                     logger.info(f'Analyze {contract}')
                     _run(bytecode_init, f'{filename}-{contract}-init', args)
                     _run(cryticCompile.bytecode_runtime(contract),  f'{filename}-{contract}-runtime', args)

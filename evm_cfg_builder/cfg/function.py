@@ -79,6 +79,7 @@ class Function(object):
 
     def check_view(self):
         changing_state_ops = ['CREATE',
+                              'CREATE2',
                               'CALL',
                               'CALLCODE',
                               'DELEGATECALL',
@@ -93,6 +94,7 @@ class Function(object):
 
     def check_pure(self):
         state_ops = ['CREATE',
+                     'CREATE2',
                      'CALL',
                      'CALLCODE',
                      'DELEGATECALL',
@@ -109,6 +111,7 @@ class Function(object):
                      'CODESIZE',
                      'CODECOPY',
                      'EXTCODESIZE',
+                     'EXTCODEHASH',
                      'EXTCODECOPY',
                      'RETURNDATASIZE',
                      'RETURNDATACOPY',
@@ -119,7 +122,6 @@ class Function(object):
                      'DIFFICULTY',
                      'GASLIMIT',
                      'LOG0', 'LOG1', 'LOG2', 'LOG3', 'LOG4',
-                     'CREATE',
                      'CALL',
                      'CALLCODE',
                      'DELEGATECALL',

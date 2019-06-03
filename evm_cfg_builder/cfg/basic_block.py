@@ -40,6 +40,14 @@ class BasicBlock(object):
         return self._outgoing_basic_blocks.get(key, [])
 
     @property
+    def incoming_basic_blocks_as_dict(self):
+        return self._incoming_basic_blocks
+
+    @property
+    def outgoing_basic_blocks_as_dict(self):
+        return self._outgoing_basic_blocks
+
+    @property
     def all_incoming_basic_blocks(self):
         bbs = self._incoming_basic_blocks.values()
         bbs = [bb for sublist in bbs for bb in sublist]
@@ -76,7 +84,7 @@ class BasicBlock(object):
             bb for bb in self.outgoing_basic_blocks(key)
             if bb.start.pc != self.end.pc + 1
         ]
-        
+
         if len(outgoing_basic_blocks[key]) > 1:
             return
 

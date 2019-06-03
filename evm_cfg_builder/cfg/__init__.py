@@ -1,3 +1,4 @@
+import logging
 from .basic_block import BasicBlock
 from .function import Function
 
@@ -9,6 +10,8 @@ from ..value_set_analysis import StackValueAnalysis
 import re
 from pyevmasm import disassemble_all
 
+logger = logging.getLogger("evm-cfg-builder")
+
 BASIC_BLOCK_END = [
     'STOP',
     'SELFDESTRUCT',
@@ -19,6 +22,45 @@ BASIC_BLOCK_END = [
     'JUMP',
     'JUMPI'
 ]
+
+def convert_bytecode(bytecode):
+    '''
+        Convert the bytecode to bytes
+        Remove trailing \n
+        Remove '0x'
+        Replace library call to 'AAA.AAA'
+        Args:
+            bytecode (str|bytes)
+        Return:
+            (bytes)
+    '''
+    if bytecode is not None:
+        if isinstance(bytecode, str):
+            for library_found in re.findall(r'__.{36}__', bytecode):
+                logger.info('Replace library %s by %s', library_found, 'A'*40)
+            bytecode = re.sub(
+                r'__.{36}__',
+                'A'*40,
+                bytecode
+            )
+
+            bytecode = bytecode.replace('\n', '')
+            if bytecode.startswith('0x'):
+                bytecode = bytes.fromhex(bytecode[2:])
+            else:
+                bytecode = bytes.fromhex(bytecode)
+        else:
+            for library_found in re.findall(b'__.{36}__', bytecode):
+                logger.info('Replace library %s by %s', library_found, 'A'*40)
+            bytecode = re.sub(
+                b'__.{36}__',
+                b'A'*40,
+                bytecode
+            )
+            if bytecode.startswith(b'0x'):
+                bytecode = bytes.fromhex(bytecode[2:].decode().replace('\n', ''))
+
+    return bytecode
 
 class CFG(object):
     """Implements the control flow graph (CFG) of an EVM bytecode.
@@ -44,17 +86,7 @@ class CFG(object):
 
         assert(isinstance(bytecode, (type(None), str, bytes)))
 
-        if bytecode is not None:
-            if isinstance(bytecode, str):
-                if bytecode.startswith('0x'):
-                    bytecode = bytes.fromhex(bytecode[2:])
-                else:
-                    bytecode = bytecode.encode('charmap')
-            else:
-                if bytecode.startswith(b'0x'):
-                    bytecode = bytes.fromhex(bytecode[2:].decode())
-
-        self._bytecode = bytecode
+        self._bytecode = convert_bytecode(bytecode)
 
         if remove_metadata:
             self.remove_metadata()
@@ -75,12 +107,7 @@ class CFG(object):
     def bytecode(self, bytecode):
         assert(isinstance(bytecode, (type(None), str, bytes)))
 
-        if bytecode is not None:
-            if isinstance(bytecode, str):
-                if bytecode.startswith('0x'):
-                    bytecode = bytes.fromhex(bytecode[2:])
-                else:
-                    bytecode = bytecode.encode('charmap')
+        bytecode = convert_bytecode(bytecode)
 
         self.clear()
         self._bytecode = bytecode
@@ -301,7 +328,7 @@ class CFG(object):
 
                 f.write('{}[label="{}"]\n'.format(basic_block.start.pc, instructions))
 
-                for son in basic_block.all_incoming_basic_blocks:
+                for son in basic_block.all_outgoing_basic_blocks:
                     f.write('{} -> {}\n'.format(basic_block.start.pc, son.start.pc))
 
             f.write('\n}')

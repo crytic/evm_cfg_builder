@@ -6,8 +6,8 @@ python:
   - 3.6
 env:
   - TEST_SUITE=scripts/travis_tests.sh
-  - TEST_SUITE=scripts/travis_test_truffle.sh
-  - TEST_SUITE=scripts/travis_test_embark.sh
+#  - TEST_SUITE=scripts/travis_test_truffle.sh
+#  - TEST_SUITE=scripts/travis_test_embark.sh
 branches:
   only:
   - master
@@ -16,8 +16,8 @@ branches:
 install:
   - scripts/travis_install.sh
 
-#script:
-#  - $TEST_SUITE
+script:
+  - $TEST_SUITE
 
 
 

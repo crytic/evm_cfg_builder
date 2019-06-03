@@ -1,5 +1,5 @@
 # EVM CFG BUILDER
-
+[![Build Status](https://travis-ci.org/crytic/evm_cfg_builder.svg?branch=master)](https://travis-ci.org/crytic/evm_cfg_builder)
 [![Slack Status](https://empireslacking.herokuapp.com/badge.svg)](https://empireslacking.herokuapp.com)
 [![PyPI version](https://badge.fury.io/py/evm-cfg-builder.svg)](https://badge.fury.io/py/evm-cfg-builder)
 

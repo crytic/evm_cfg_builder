@@ -82,13 +82,14 @@ def _run(bytecode, filename, args):
         output_to_dot(args.dot_directory, filename, cfg)
 
     if args.export_abi:
-        export = {}
+        export = []
         for function in cfg.functions:
-            export[hex(function.hash_id)] = {
+            export.append({
+                'hash_id': hex(function.hash_id),
                 'start_addr': hex(function.start_addr),
                 'signature': function.name if function.name != hex(function.hash_id) else None,
                 'attributes': function.attributes
-            }
+            })
 
         with open(args.export_abi, 'w') as f:
             json.dump(export, f)

@@ -4,7 +4,7 @@ from .function import Function
 
 __all__ = ["CFG", "BasicBlock", "Function"]
 
-from ..known_hashes import known_hashes
+from ..known_hashes.known_hashes import known_hashes
 from evm_cfg_builder.value_analysis.value_set_analysis import StackValueAnalysis
 
 import re
@@ -66,7 +66,7 @@ class CFG(object):
     """Implements the control flow graph (CFG) of an EVM bytecode.
     """
 
-    def __init__(self, bytecode=None, remove_metadata=True, analyze=True, optimization_enabled=True):
+    def __init__(self, bytecode=None, remove_metadata=True, analyze=True, optimization_enabled=True, compute_cfgs=True):
         """Initialize an EVM CFG.
 
         :param bytecode: The EVM bytecode
@@ -93,7 +93,9 @@ class CFG(object):
         if remove_metadata:
             self.remove_metadata()
         if analyze:
-            self.analyze()
+            self.create_functions()
+            if compute_cfgs:
+                self.create_cfgs()
 
     def __repr__(self):
         return "<CFG: {} Functions, {} Basic Blocks>".format(
@@ -172,7 +174,11 @@ class CFG(object):
         '''
         return self._functions.get(addr)
 
-    def analyze(self):
+    def create_functions(self):
+        '''
+        Create the functions. The CFGs are not computed
+        :return:
+        '''
         self.compute_basic_blocks()
         self.compute_functions(self._basic_blocks[0], True)
         self.add_function(Function(Function.DISPATCHER_ID, 0, self._basic_blocks[0], self))
@@ -180,6 +186,13 @@ class CFG(object):
         for function in self.functions:
             if function.hash_id in known_hashes:
                 function.name = known_hashes[function.hash_id]
+
+    def create_cfgs(self):
+        '''
+        Compute the CFGs
+        :return:
+        '''
+        for function in self.functions:
 
             vsa = StackValueAnalysis(
                 self,

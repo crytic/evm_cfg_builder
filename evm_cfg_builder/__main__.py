@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 import argparse
@@ -6,7 +7,7 @@ import os
 from pkg_resources import require
 
 from crytic_compile import cryticparser, CryticCompile, InvalidCompilation, is_supported
-from . import known_hashes
+from .known_hashes.known_hashes import known_hashes
 
 from .cfg import CFG
 
@@ -41,6 +42,18 @@ def parse_args():
                         dest='disable_optimizations',
                         default=False)
 
+    parser.add_argument('--disable-cfg',
+                        help='Disable the CFG recovery',
+                        action='store_true',
+                        dest='disable_cfg',
+                        default=False)
+
+    parser.add_argument('--export-abi',
+                        help="Export the contract's ABI",
+                        action='store',
+                        dest='export_abi',
+                        default=None)
+
     parser.add_argument('--version',
                         help='displays the current version',
                         version=require('evm-cfg-builder')[0].version,
@@ -60,13 +73,26 @@ def _run(bytecode, filename, args):
     if args.disable_optimizations:
         optimization_enabled = True
 
-    cfg = CFG(bytecode, optimization_enabled=optimization_enabled)
+    cfg = CFG(bytecode, optimization_enabled=optimization_enabled, compute_cfgs=not args.disable_cfg)
 
     for function in cfg.functions:
         logger.info(function)
 
     if args.dot_directory:
         output_to_dot(args.dot_directory, filename, cfg)
+
+    if args.export_abi:
+        export = {}
+        for function in cfg.functions:
+            export[hex(function.hash_id)] = {
+                'start_addr': hex(function.start_addr),
+                'signature': function.name if function.name != hex(function.hash_id) else None,
+                'attributes': function.attributes
+            }
+
+        with open(args.export_abi, 'w') as f:
+            json.dump(export, f)
+
 
 def main():
 
@@ -95,7 +121,6 @@ def main():
             bytecode = f.read()
         logger.info(f'Analyze {args.filename}')
         _run(bytecode, args.filename, args)
-
 
 
 

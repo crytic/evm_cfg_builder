@@ -1,7 +1,6 @@
-import sys
 import itertools
 
-from .cfg.function import Function
+from evm_cfg_builder.cfg.function import Function
 
 BASIC_BLOCK_END = ['STOP',
                    'SELFDESTRUCT',
@@ -32,11 +31,22 @@ class AbsStackElem(object):
     and is not sound.
     '''
 
-    # Maximum number of values inside the set. If > MAXVALS -> TOP
-    MAXVALS = 100
 
-    def __init__(self):
-        self._vals = []
+
+    def __init__(self, auhtorized_values):
+        self._vals = set()
+        self._authorized_values = auhtorized_values
+
+        # Maximum number of values inside the set. If > MAXVALS -> TOP
+        self._max_number_of_elements = 100
+        if self._authorized_values:
+            # If we know the set of targets, we can change the max number of elements in the set
+            self._max_number_of_elements = len(auhtorized_values)
+
+
+    @property
+    def authorized_values(self):
+        return self._authorized_values
 
     def append(self, nbr):
         '''
@@ -45,17 +55,23 @@ class AbsStackElem(object):
         Args:
             nbr (int, None)
         '''
-        if nbr is None:
-            self._vals.append(None)
+        # Optimization enabled
+        if self._authorized_values:
+            # Only keep track of values that are JMPDEST
+            if nbr in self._authorized_values:
+                self._vals.add(nbr)
+            # Only Add None if its not present; avoid the list to grow up on unknown values
+            elif None not in self._authorized_values:
+                self._vals.add(None)
         else:
-            self._vals.append(nbr)
+            self._vals.add(nbr)
 
     def get_vals(self):
         '''
             Return the values. The return must be checked for TOP (None)
 
         Returns:
-            list of int, or None
+            set of int, or None
         '''
         return self._vals
 
@@ -63,7 +79,7 @@ class AbsStackElem(object):
         '''
             Set the values
         Args:
-            vals (list of int, or None): List of values, or TOP
+            vals (set of int, or None): List of values, or TOP
         '''
         self._vals = vals
 
@@ -76,10 +92,10 @@ class AbsStackElem(object):
             AbsStackElem: New object containing the result of the AND between
             the values. If one of the absStackElem is TOP, returns TOP
         '''
-        newElem = AbsStackElem()
+        newElem = AbsStackElem(self.authorized_values)
         v1 = self.get_vals()
         v2 = elem.get_vals()
-        if not v1 or not v2:
+        if v1 is None or v2 is None:
             newElem.set_vals(None)
             return newElem
 
@@ -100,14 +116,14 @@ class AbsStackElem(object):
             AbsStackElem: New object containing the result of the merge
                           If one of the absStackElem is TOP, returns TOP
         '''
-        newElem = AbsStackElem()
+        newElem = AbsStackElem(self.authorized_values)
         v1 = self.get_vals()
         v2 = elem.get_vals()
-        if not v1 or not v2:
+        if v1 is None or v2 is None:
             newElem.set_vals(None)
             return newElem
-        vals = list(set(v1 + v2))
-        if len(vals) > self.MAXVALS:
+        vals = set(v1 | v2)
+        if len(vals) > self._max_number_of_elements:
             vals = None
         newElem.set_vals(vals)
         return newElem
@@ -124,21 +140,9 @@ class AbsStackElem(object):
         '''
 
         v1 = self.get_vals()
-
         v2 = elems.get_vals()
 
-        if not v1 or not v2:
-            if not v1 and not v2:
-                return True
-            return False
-
-        if len(v1) != len(v2):
-            return False
-
-        if any(v not in v2 for v in v1):
-            return False
-
-        return True
+        return v1 == v2
 
     def get_copy(self):
         '''
@@ -146,7 +150,7 @@ class AbsStackElem(object):
         Returns:
             AbsStackElem
         '''
-        cp = AbsStackElem()
+        cp = AbsStackElem(self.authorized_values)
         cp.set_vals(self.get_vals())
         return cp
 
@@ -167,8 +171,13 @@ class Stack(object):
         We keep the same stack for one basic block, to reduce the memory usage
     '''
 
-    def __init__(self):
+    def __init__(self, authorized_values):
         self._elems = []
+        self._authorized_values = authorized_values
+
+    @property
+    def authorized_values(self):
+        return self._authorized_values
 
     def copy_stack(self, stack):
         '''
@@ -188,7 +197,7 @@ class Stack(object):
             hexadecimal repr
         '''
         if not isinstance(elem, AbsStackElem):
-            st = AbsStackElem()
+            st = AbsStackElem(self.authorized_values)
             st.append(elem)
             elem = st
 
@@ -196,7 +205,7 @@ class Stack(object):
 
     def insert(self, elem):
         if not isinstance(elem, AbsStackElem):
-            st = AbsStackElem()
+            st = AbsStackElem(self.authorized_values)
             st.append(elem)
             elem = st
 
@@ -267,7 +276,7 @@ class Stack(object):
             stack (Stack)
         Returns: New object representing the merge
         '''
-        newSt = Stack()
+        newSt = Stack(self.authorized_values)
         elems1 = self.get_elems()
         elems2 = stack.get_elems()
         # We look for the longer stack
@@ -290,7 +299,7 @@ class Stack(object):
         Args:
             stack (Stack)
         Returns:
-            bool: True if the stac are equals
+            bool: True if the stacks are equals
         '''
         elems1 = self.get_elems()
         elems2 = stack.get_elems()
@@ -318,11 +327,21 @@ class Stack(object):
         return str([str(x) for x in self._elems[-100::]])
 
 
+def get_valid_destination(instructions):
+    '''
+    Return the list of valid destinations
+    :param instructions:
+    :return:
+    '''
+    return set([ins.pc for ins in instructions if ins.name == 'JUMPDEST'])
+
 class StackValueAnalysis(object):
     '''Stack value analysis.
 
     After each convergence, we add the new branches and re-analyze the function.
     The exploration is bounded in case the analysis is lost.
+
+    IF enable_optimization is enabled, only keep track of valid destination
     '''
 
     def __init__(self,
@@ -331,7 +350,8 @@ class StackValueAnalysis(object):
                  key,
                  maxiteration=1000,
                  maxexploration=100,
-                 initStack=None):
+                 initStack=None,
+                 enable_optimization=True):
         '''
         Args:
             maxiteration (int): number of time re-analyze the function
@@ -373,6 +393,15 @@ class StackValueAnalysis(object):
 
         self._outgoing_basic_blocks = []
 
+        self._authorized_values = None
+
+        if enable_optimization:
+            self._authorized_values = get_valid_destination(cfg.instructions)
+
+    @property
+    def authorized_values(self):
+        return self._authorized_values
+
     def is_jumpdst(self, addr):
         '''
             Check that an instruction is a JUMPDEST
@@ -394,7 +423,7 @@ class StackValueAnalysis(object):
         return (False, None)
 
     def _transfer_func_ins(self, ins, addr, stackIn):
-        stack = Stack()
+        stack = Stack(self.authorized_values)
         stack.copy_stack(stackIn)
 
         (is_stub, stub_ret) = self.stub(ins, addr, stack)
@@ -496,7 +525,7 @@ class StackValueAnalysis(object):
         if init and self.initStack:
             stack = self.initStack
         else:
-            stack = Stack()
+            stack = Stack(self.authorized_values)
 
         # Merge all the stack incoming_basic_blocks
         # We merge only father that were already analyzed

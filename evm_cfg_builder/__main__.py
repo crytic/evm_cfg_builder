@@ -4,7 +4,6 @@ import argparse
 import logging
 import os
 from pkg_resources import require
-from pyevmasm import disassemble_all
 
 from crytic_compile import cryticparser, CryticCompile, InvalidCompilation, is_supported
 from . import known_hashes
@@ -36,6 +35,12 @@ def parse_args():
                         dest='dot_directory',
                         default='crytic-export/evm')
 
+    parser.add_argument('--disable-optimizations',
+                        help='Disable the CFG recovery optimizations',
+                        action='store_true',
+                        dest='disable_optimizations',
+                        default=False)
+
     parser.add_argument('--version',
                         help='displays the current version',
                         version=require('evm-cfg-builder')[0].version,
@@ -50,7 +55,12 @@ def parse_args():
     return args
 
 def _run(bytecode, filename, args):
-    cfg = CFG(bytecode)
+
+    optimization_enabled = False
+    if args.disable_optimizations:
+        optimization_enabled = True
+
+    cfg = CFG(bytecode, optimization_enabled=optimization_enabled)
 
     for function in cfg.functions:
         logger.info(function)

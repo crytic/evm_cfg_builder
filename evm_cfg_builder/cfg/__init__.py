@@ -5,7 +5,7 @@ from .function import Function
 __all__ = ["CFG", "BasicBlock", "Function"]
 
 from ..known_hashes import known_hashes
-from ..value_set_analysis import StackValueAnalysis
+from evm_cfg_builder.value_analysis.value_set_analysis import StackValueAnalysis
 
 import re
 from pyevmasm import disassemble_all
@@ -66,7 +66,7 @@ class CFG(object):
     """Implements the control flow graph (CFG) of an EVM bytecode.
     """
 
-    def __init__(self, bytecode=None, remove_metadata=True, analyze=True):
+    def __init__(self, bytecode=None, remove_metadata=True, analyze=True, optimization_enabled=True):
         """Initialize an EVM CFG.
 
         :param bytecode: The EVM bytecode
@@ -83,6 +83,8 @@ class CFG(object):
         # instructions 
         self._basic_blocks = dict()
         self._instructions = dict()
+
+        self._optimization_enabled = optimization_enabled
 
         assert(isinstance(bytecode, (type(None), str, bytes)))
 
@@ -182,7 +184,8 @@ class CFG(object):
             vsa = StackValueAnalysis(
                 self,
                 function.entry,
-                function.hash_id
+                function.hash_id,
+                self._optimization_enabled
             )
             bbs = vsa.analyze()
 

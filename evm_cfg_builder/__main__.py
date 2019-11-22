@@ -113,7 +113,11 @@ def main():
                         known_hashes[hash] = signature
                     logger.info(f'Analyze {contract}')
                     _run(bytecode_init, f'{filename}-{contract}-init', args)
-                    _run(cryticCompile.bytecode_runtime(contract),  f'{filename}-{contract}-runtime', args)
+                    runtime_bytecode = cryticCompile.bytecode_runtime(contract)
+                    if runtime_bytecode:
+                        _run(runtime_bytecode,  f'{filename}-{contract}-runtime', args)
+                    else:
+                        logger.info('Runtime bytecode not available')
         except InvalidCompilation as e:
             logger.error(e)
 

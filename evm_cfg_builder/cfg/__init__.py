@@ -287,21 +287,27 @@ class CFG(object):
                     return
 
         function_start, function_hash = is_jump_to_function(block)
-        if(function_start):
-            new_function = Function(
-                function_hash,
-                function_start,
-                self._basic_blocks[function_start],
-                self
-            )
+        if function_start:
+            # The disptacher can be a tree and not a list of comparison
+            # As a result, if GT is in the basic block, we are branching to
+            # a branch of the dispatcher tree rather than directy calling the funciton
+            if 'GT' in [i.name for i in block.instructions]:
+                next_branch = self._basic_blocks[function_start]
+                self.compute_functions(next_branch)
 
-            self._functions[function_start] = new_function
+            else:
+                new_function = Function(
+                    function_hash,
+                    function_start,
+                    self._basic_blocks[function_start],
+                    self
+                )
+
+                self._functions[function_start] = new_function
 
             if block.ends_with_jumpi():
                 false_branch = self._basic_blocks[block.end.pc + 1]
                 self.compute_functions(false_branch)
-
-            return
 
     def add_function(self, func):
         assert isinstance(func, Function)

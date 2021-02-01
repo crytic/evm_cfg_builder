@@ -1,4 +1,5 @@
 import itertools
+from typing import Dict, List, Set, Optional
 
 from evm_cfg_builder.cfg.function import Function
 
@@ -33,8 +34,11 @@ class AbsStackElem(object):
 
 
 
-    def __init__(self, auhtorized_values):
-        self._vals = set()
+    def __init__(self, auhtorized_values, vals=None):
+        if vals:
+            self._vals = vals
+        else:
+            self._vals = set()
         self._authorized_values = auhtorized_values
 
         # Maximum number of values inside the set. If > MAXVALS -> TOP
@@ -43,10 +47,6 @@ class AbsStackElem(object):
             # If we know the set of targets, we can change the max number of elements in the set
             self._max_number_of_elements = len(auhtorized_values)
 
-
-    @property
-    def authorized_values(self):
-        return self._authorized_values
 
     def append(self, nbr):
         '''
@@ -66,7 +66,7 @@ class AbsStackElem(object):
         else:
             self._vals.add(nbr)
 
-    def get_vals(self):
+    def get_vals(self) -> Optional[Set[int]]:
         '''
             Return the values. The return must be checked for TOP (None)
 
@@ -92,7 +92,7 @@ class AbsStackElem(object):
             AbsStackElem: New object containing the result of the AND between
             the values. If one of the absStackElem is TOP, returns TOP
         '''
-        newElem = AbsStackElem(self.authorized_values)
+        newElem = AbsStackElem(self._authorized_values)
         v1 = self.get_vals()
         v2 = elem.get_vals()
         if v1 is None or v2 is None:
@@ -116,7 +116,7 @@ class AbsStackElem(object):
             AbsStackElem: New object containing the result of the merge
                           If one of the absStackElem is TOP, returns TOP
         '''
-        newElem = AbsStackElem(self.authorized_values)
+        newElem = AbsStackElem(self._authorized_values)
         v1 = self.get_vals()
         v2 = elem.get_vals()
         if v1 is None or v2 is None:
@@ -150,8 +150,7 @@ class AbsStackElem(object):
         Returns:
             AbsStackElem
         '''
-        cp = AbsStackElem(self.authorized_values)
-        cp.set_vals(self.get_vals())
+        cp = AbsStackElem(self._authorized_values, self._vals)
         return cp
 
     def __str__(self):
@@ -161,6 +160,8 @@ class AbsStackElem(object):
             str
         '''
         return str(self._vals)
+
+
 
 
 class Stack(object):
@@ -178,6 +179,9 @@ class Stack(object):
     @property
     def authorized_values(self):
         return self._authorized_values
+
+    def depth(self) -> int:
+        return len(self._elems)
 
     def copy_stack(self, stack):
         '''
@@ -253,7 +257,7 @@ class Stack(object):
         else:
             self.push(None)
 
-    def get_elems(self):
+    def get_elems(self) -> List[AbsStackElem]:
         '''
             Returns the stack elements
         Returns:
@@ -327,6 +331,42 @@ class Stack(object):
         return str([str(x) for x in self._elems[-100::]])
 
 
+def merge_stack(stacks: List[Stack], authorized_values):
+    '''
+        Merge two stack. Returns a new object
+    Arg:
+        stack (Stack)
+    Returns: New object representing the merge
+    '''
+
+    stack_elements: List[AbsStackElem] = []
+
+    _max_number_of_elements = len(authorized_values) if authorized_values else 100
+
+    found = True
+    i = 0
+    while found:
+        vals: Optional[Set[int]] = set()
+        found = False
+        for stack in stacks:
+            elems = stack.get_elems()
+            if len(elems) <= i:
+                continue
+            found = True
+            next_vals = elems[i].get_vals()
+            if next_vals is None:
+                vals = None
+                break
+            vals |= next_vals
+            if len(vals) > _max_number_of_elements:
+                vals = None
+                break
+        stack_elements.append(AbsStackElem(authorized_values, vals))
+        i = i + 1
+    newSt = Stack(authorized_values)
+    newSt.set_elems(stack_elements)
+    return newSt
+
 def get_valid_destination(instructions):
     '''
     Return the list of valid destinations
@@ -363,8 +403,11 @@ class StackValueAnalysis(object):
 
         # all the targets discovered
         self.all_discovered_targets = {}
-        self.stacksIn = {}
-        self.stacksOut = {}
+
+        # The the destination value on a JUMP/JUMPI
+        self.last_ins_top_value: Dict[int, Stack] = {}
+        # Only save stacksOut for the last instructions of a BB
+        self.stacksOut: Dict[int, Stack] = {}
 
         # bb counter, to bound the bb exploration
         self.bb_counter = {}
@@ -422,9 +465,7 @@ class StackValueAnalysis(object):
     def stub(self, ins, addr, stack):
         return (False, None)
 
-    def _transfer_func_ins(self, ins, addr, stackIn):
-        stack = Stack(self.authorized_values)
-        stack.copy_stack(stackIn)
+    def _transfer_func_ins(self, ins, addr, stack):
 
         (is_stub, stub_ret) = self.stub(ins, addr, stack)
         if is_stub:
@@ -479,12 +520,20 @@ class StackValueAnalysis(object):
             self._basic_blocks_explored.append(bb.start.pc)
 
         ins = None
-        for ins in bb.instructions:
+        for idx, ins in enumerate(bb.instructions):
             addr = ins.pc
-            self.stacksIn[addr] = stack
+            # Only save last instructions
+            if idx == len(bb.instructions) - 1 and ins.name in ["JUMP", "JUMPI"]:
+                self.last_ins_top_value[addr] = stack.top().get_vals()
+                # stackIn = stack
+                # stack = Stack(self.authorized_values)
+                # stack.copy_stack(stackIn)
+
             stack = self._transfer_func_ins(ins, addr, stack)
 
-            self.stacksOut[addr] = stack
+            # Only save stackOut for last instructions
+            if idx == len(bb.instructions) - 1:
+                self.stacksOut[addr] = stack
 
         if ins:
             # if we are going to do a jump / jumpi
@@ -534,11 +583,8 @@ class StackValueAnalysis(object):
         incoming_basic_blocks = [f for f in incoming_basic_blocks if f.end.pc in self.stacksOut]
 
         if incoming_basic_blocks:
-            father = incoming_basic_blocks[0]
-            incoming_basic_blocks = incoming_basic_blocks[1::]
-            stack.copy_stack(self.stacksOut[father.end.pc])
-            for father in incoming_basic_blocks:
-                stack = stack.merge(self.stacksOut[father.end.pc])
+            stacks = [self.stacksOut[father.end.pc] for father in incoming_basic_blocks]
+            stack = merge_stack(stacks, self._authorized_values,)
         # Analyze the BB
         self._explore_bb(bb, stack)
 
@@ -548,7 +594,7 @@ class StackValueAnalysis(object):
         if op == 'JUMP':
             src = end
 
-            dst = self.stacksIn[end].top().get_vals()
+            dst = self.last_ins_top_value[end]
 
             if dst:
                 dst = [x for x in dst if x and self.is_jumpdst(x)]
@@ -558,7 +604,7 @@ class StackValueAnalysis(object):
         elif op == 'JUMPI':
             src = end
 
-            dst = self.stacksIn[end].top().get_vals()
+            dst = self.last_ins_top_value[end]
             if dst:
                 dst = [x for x in dst if x and self.is_jumpdst(x)]
 

@@ -1,4 +1,6 @@
+import cProfile
 import json
+import pstats
 import re
 import sys
 import argparse
@@ -59,6 +61,10 @@ def parse_args():
                         version=require('evm-cfg-builder')[0].version,
                         action='version')
 
+    parser.add_argument(
+        "--perf", help=argparse.SUPPRESS, action="store_true", default=False,
+    )
+
     cryticparser.init(parser)
 
     if len(sys.argv) == 1:
@@ -101,6 +107,10 @@ def main():
     l.setLevel(logging.INFO)
     args = parse_args()
 
+    if args.perf:
+        cp = cProfile.Profile()
+        cp.enable()
+
     if is_supported(args.filename):
         filename = args.filename
         del args.filename
@@ -127,6 +137,10 @@ def main():
         logger.info(f'Analyze {args.filename}')
         _run(bytecode, args.filename, args)
 
+    if args.perf:
+        cp.disable()
+        stats = pstats.Stats(cp).sort_stats("cumtime")
+        stats.print_stats()
 
 
 

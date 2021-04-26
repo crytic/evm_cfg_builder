@@ -117,12 +117,7 @@ def main():
         try:
             cryticCompile = CryticCompile(filename, **vars(args))
             for key, compilation_unit in cryticCompile.compilation_units.items():
-                print('###')
-                print(key)
-                print(compilation_unit.contracts_names)
                 for contract in compilation_unit.contracts_names:
-                    print('###')
-                    print(contract)
                     bytecode_init = compilation_unit.bytecode_init(contract)
                     if bytecode_init:
                         for signature, hash in compilation_unit.hashes(contract).items():

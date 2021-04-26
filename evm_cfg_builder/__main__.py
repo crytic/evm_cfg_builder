@@ -116,18 +116,24 @@ def main():
         del args.filename
         try:
             cryticCompile = CryticCompile(filename, **vars(args))
-            for contract in cryticCompile.contracts_names:
-                bytecode_init = cryticCompile.bytecode_init(contract)
-                if bytecode_init:
-                    for signature, hash in cryticCompile.hashes(contract).items():
-                        known_hashes[hash] = signature
-                    logger.info(f'Analyze {contract}')
-                    _run(bytecode_init, f'{filename}-{contract}-init', args)
-                    runtime_bytecode = cryticCompile.bytecode_runtime(contract)
-                    if runtime_bytecode:
-                        _run(runtime_bytecode,  f'{filename}-{contract}-runtime', args)
-                    else:
-                        logger.info('Runtime bytecode not available')
+            for key, compilation_unit in cryticCompile.compilation_units.items():
+                print('###')
+                print(key)
+                print(compilation_unit.contracts_names)
+                for contract in compilation_unit.contracts_names:
+                    print('###')
+                    print(contract)
+                    bytecode_init = compilation_unit.bytecode_init(contract)
+                    if bytecode_init:
+                        for signature, hash in compilation_unit.hashes(contract).items():
+                            known_hashes[hash] = signature
+                        logger.info(f'Analyze {contract}')
+                        _run(bytecode_init, f'{key}-{filename}-{contract}-init', args)
+                        runtime_bytecode = compilation_unit.bytecode_runtime(contract)
+                        if runtime_bytecode:
+                            _run(runtime_bytecode,  f'{key}-{filename}-{contract}-runtime', args)
+                        else:
+                            logger.info('Runtime bytecode not available')
         except InvalidCompilation as e:
             logger.error(e)
 

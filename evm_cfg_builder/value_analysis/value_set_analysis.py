@@ -343,26 +343,19 @@ def merge_stack(stacks: List[Stack], authorized_values):
 
     _max_number_of_elements = len(authorized_values) if authorized_values else 100
 
-    found = True
-    i = 0
-    while found:
-        vals: Optional[Set[int]] = set()
-        found = False
-        for stack in stacks:
-            elems = stack.get_elems()
-            if len(elems) <= i:
-                continue
-            found = True
-            next_vals = elems[i].get_vals()
+    for stack in stacks:
+        stack_elems = stack.get_elems()
+        for item in stack_elems:
+            vals = set()
+            next_vals = item.get_vals()
             if next_vals is None:
                 vals = None
                 break
+
             vals |= next_vals
-            if len(vals) > _max_number_of_elements:
-                vals = None
-                break
-        stack_elements.append(AbsStackElem(authorized_values, vals))
-        i = i + 1
+            if len(stack_elements) < _max_number_of_elements:
+                stack_elements.append(AbsStackElem(authorized_values, vals))
+
     newSt = Stack(authorized_values)
     newSt.set_elems(stack_elements)
     return newSt

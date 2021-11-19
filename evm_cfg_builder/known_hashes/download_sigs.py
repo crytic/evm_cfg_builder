@@ -5,7 +5,7 @@ import requests
 import known_hashes
 
 
-def get_results(url):
+def get_results(url, num_parsed):
     """
     Queries the API for a json formatted list of functions and their associated function signatures
     """
@@ -16,6 +16,7 @@ def get_results(url):
     next_url = json_data["next"]
     results = json_data["results"]
 
+    count = 0
     for result in results:
         hex_sig = result["hex_signature"]
         text_sig = result["text_signature"]
@@ -26,7 +27,14 @@ def get_results(url):
             # hex_sig is a 'str', parse it into an 'int'
             known_hashes.known_hashes[int(hex_sig, 16)] = text_sig
 
-    return next_url
+        count += 1
+
+    num_parsed += count
+    # Display a status update
+    percentage_comp = num_parsed / json_data["count"] * 100
+    print(f"Parsed {num_parsed}/{json_data['count']} results ({percentage_comp:.2f}%)")
+
+    return next_url, count
 
 
 def iterate_paginated_results(url):
@@ -34,14 +42,13 @@ def iterate_paginated_results(url):
     4byte paginates the results for effeciency because there are > 400,000 function signatures.
     This will move from page to page and collect all the signatures available.
     """
-    i = 1
+    results_parsed = 0
     while True:
-        print(f"Iterating results on page: {i}")
-        url = get_results(url)
+        url, num_parsed = get_results(url, results_parsed)
         if not url:
             break
 
-        i += 1
+        results_parsed += num_parsed
 
     print("Finished iterating over results")
 

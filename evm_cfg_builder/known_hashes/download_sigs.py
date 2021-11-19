@@ -17,8 +17,12 @@ def get_results(url):
     for result in results:
         hex_sig = result["hex_signature"]
         text_sig = result["text_signature"]
-        # hex_sig is a 'str', parse it into an 'int'
-        known_hashes.known_hashes[int(hex_sig, 16)] = text_sig
+        # If a key already exists, do not overwrite it. This helps cover the corner
+        # case of a hash collision. An example of this is
+        # owner() and ideal_warn_timed(uint256,uint128)
+        if int(hex_sig, 16) not in known_hashes.known_hashes:
+            # hex_sig is a 'str', parse it into an 'int'
+            known_hashes.known_hashes[int(hex_sig, 16)] = text_sig
 
     return next_url
 

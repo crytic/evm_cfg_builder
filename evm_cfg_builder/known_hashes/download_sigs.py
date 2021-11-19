@@ -1,18 +1,20 @@
+"""
+Queries and import function signatures from https://www.4byte.directory/
+"""
 import requests
 import known_hashes
 
 
 def get_results(url):
+    """
+    Queries the API for a json formatted list of functions and their associated function signatures
+    """
     resp = requests.get(url)
+    resp.raise_for_status()
+
     json_data = resp.json()
     next_url = json_data["next"]
     results = json_data["results"]
-
-    # Check to see if there are any new results
-    # If there are more existing hashes than the total returned by the API request, assume there are
-    # no new changes
-    if len(known_hashes.known_hashes) >= json_data["count"]:
-        return None
 
     for result in results:
         hex_sig = result["hex_signature"]
@@ -28,6 +30,10 @@ def get_results(url):
 
 
 def iterate_paginated_results(url):
+    """
+    4byte paginates the results for effeciency because there are > 400,000 function signatures.
+    This will move from page to page and collect all the signatures available.
+    """
     i = 1
     while True:
         print(f"Iterating results on page: {i}")

@@ -16,7 +16,7 @@ def get_results(url, num_parsed):
     next_url = json_data["next"]
     results = json_data["results"]
 
-    count = 0
+    cur_parsed = 0
     for result in results:
         hex_sig = result["hex_signature"]
         text_sig = result["text_signature"]
@@ -27,14 +27,14 @@ def get_results(url, num_parsed):
             # hex_sig is a 'str', parse it into an 'int'
             known_hashes.known_hashes[int(hex_sig, 16)] = text_sig
 
-        count += 1
+        cur_parsed += 1
 
-    num_parsed += count
+    num_parsed += cur_parsed
     # Display a status update
     percentage_comp = num_parsed / json_data["count"] * 100
     print(f"Parsed {num_parsed}/{json_data['count']} results ({percentage_comp:.2f}%)")
 
-    return next_url, count
+    return next_url, cur_parsed
 
 
 def iterate_paginated_results(url):

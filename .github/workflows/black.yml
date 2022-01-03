@@ -43,4 +43,4 @@ jobs:
           # Run only black
           VALIDATE_PYTHON_BLACK: true
           PYTHON_BLACK_CONFIG_FILE: pyproject.toml
-          FILTER_REGEX_EXCLUDE: *known_hashes.py
+          FILTER_REGEX_EXCLUDE: "*.known_hashes.py"

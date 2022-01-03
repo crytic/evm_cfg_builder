@@ -1,4 +1,4 @@
-
+#!/usr/bin/env bash
 
 python examples/explore_cfg.py examples/token-runtime.evm | sort > tmp_explore_cfg.txt
 
@@ -7,7 +7,7 @@ if [  "$DIFF" != "" ]
 then
     echo "explore_cfg failed"
     echo $DIFF
-    exit -1
+    exit 255
 fi
 
 python examples/explore_functions.py examples/token-runtime.evm > tmp_explore_functions.txt
@@ -21,7 +21,7 @@ then
 fi
 
 evm-cfg-builder tests/fomo3d.evm --export-dot fomo3d-output
-for f in `find tests/expected-fomo3d-output/*`
+for f in $(find tests/expected-fomo3d-output/*)
 do
     # Compare the sorted version of the dot files
     # It's not perfect, but it avoids dealing with similar dot files
@@ -32,6 +32,6 @@ do
         echo "fomo3d dot failed"
         echo $f
         echo $DIFF
-        exit -1
+        exit 255
     fi
 done

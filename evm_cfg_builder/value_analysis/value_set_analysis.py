@@ -449,7 +449,7 @@ class StackValueAnalysis:
 
         self._to_explore: Set["BasicBlock"] = {self._entry_point}
 
-        self._outgoing_basic_blocks: List[BasicBlock] = []
+        self._outgoing_basic_blocks: List["BasicBlock"] = []
 
         self._authorized_values: Set[int] = set()
 

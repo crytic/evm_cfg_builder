@@ -38,7 +38,7 @@ See [examples/explore_cfg.py](examples/explore_cfg.py) and [examples/explore_fun
 
 ### Using Pip
 ```bash
-$ pip install evm-cfg-builder
+pip install evm-cfg-builder
 ```
 
 ### Using Git

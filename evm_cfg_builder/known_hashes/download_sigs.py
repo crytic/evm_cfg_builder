@@ -1,11 +1,18 @@
 """
 Queries and import function signatures from https://www.4byte.directory/
 """
-import requests
+import sys
+from typing import Tuple, Dict
+
+try:
+    import requests
+except ImportError:
+    print('Run "pip install requests" t run this script')
+    sys.exit(0)
 import known_hashes
 
 
-def get_results(url, num_parsed):
+def get_results(url: str, num_parsed: int) -> Tuple[str, int]:
     """
     Queries the API for a json formatted list of functions and their associated function signatures
     """
@@ -13,7 +20,7 @@ def get_results(url, num_parsed):
     resp.raise_for_status()
 
     json_data = resp.json()
-    next_url = json_data["next"]
+    next_url: str = json_data["next"]
     results = json_data["results"]
 
     cur_parsed = 0
@@ -37,7 +44,7 @@ def get_results(url, num_parsed):
     return next_url, cur_parsed
 
 
-def iterate_paginated_results(url):
+def iterate_paginated_results(url: str) -> None:
     """
     4byte paginates the results for effeciency because there are > 400,000 function signatures.
     This will move from page to page and collect all the signatures available.
@@ -53,19 +60,19 @@ def iterate_paginated_results(url):
     print("Finished iterating over results")
 
 
-def sort_dict(unsorted_dict):
+def sort_dict(unsorted_dict: Dict) -> Dict:
     sorted_dict = dict(sorted(unsorted_dict.items()))
     return sorted_dict
 
 
-def save_results():
+def save_results() -> None:
     """
     Write the dict to the known_hashes.py file
     We write the key and value as shown below to maintain the current format
     of the key being an int - displayed as hex (4 bytes).
     """
     sorted_dict = sort_dict(known_hashes.known_hashes)
-    with open("known_hashes.py", "w") as f:
+    with open("known_hashes.py", "w", encoding="utf-8") as f:
         f.write("known_hashes = {\n")
         for k, v in sorted_dict.items():
             # format the key as so

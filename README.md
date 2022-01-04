@@ -17,15 +17,15 @@ We encourage contributions that address any known [issues](https://github.com/tr
 
 ## Usage
 
-### Command line
+### Command-line
 
 To export basic dissassembly information, run:
-```
+```bash
 evm-cfg-builder mycontract.evm 
 ```
 
 To export the CFG of each function (dot format), run:
-```
+```bash
 evm-cfg-builder mycontract.evm --export-dot my_dir 
 ```
 
@@ -37,12 +37,12 @@ See [examples/explore_cfg.py](examples/explore_cfg.py) and [examples/explore_fun
 ## How to install
 
 ### Using Pip
-```
-$ pip install evm-cfg-builder
+```bash
+pip install evm-cfg-builder
 ```
 
 ### Using Git
-```
+```bash
 git clone https://github.com/trailofbits/evm_cfg_builder
 pip install .
 ```

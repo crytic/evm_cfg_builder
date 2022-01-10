@@ -169,14 +169,16 @@ class Function:
                 instructions_ = [f"{hex(ins.pc)}:{str(ins)}" for ins in basic_block.instructions]
                 instructions = "\n".join(instructions_)
 
-                f.write(f'{basic_block.start.pc}[label="{instructions}"]\n')
+                f.write(f'{basic_block.start.pc}[label="{instructions}", shape=box]\n')
 
                 for son in basic_block.outgoing_basic_blocks(self.key):
                     f.write(f"{basic_block.start.pc} -> {son.start.pc}\n")
 
                 if not basic_block.outgoing_basic_blocks(self.key):
                     if basic_block.ends_with_jump_or_jumpi():
-                        logger.error(f"Missing branches {self.name}:{hex(basic_block.end.pc)}")
+                        logger.error(
+                            f"Missing branches {self.name} ({self.key}):{hex(basic_block.end.pc)}"
+                        )
 
             f.write("\n}")
 

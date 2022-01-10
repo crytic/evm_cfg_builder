@@ -39,12 +39,15 @@ class AbsStackElem:
 
     Thus our analysis is an under-approximation of an over-approximation
     and is not sound.
+
     """
 
     def __init__(
         self, auhtorized_values: Optional[Set[int]], vals: Optional[Set[Optional[int]]] = None
     ):
         if vals:
+            if auhtorized_values:
+                vals = {v if v in auhtorized_values else None for v in vals}
             self._vals: Optional[Set[Optional[int]]] = vals
         else:
             self._vals = set()
@@ -351,29 +354,26 @@ def merge_stack(stacks: List[Stack], authorized_values: Set[int]) -> Stack:
 
     _max_number_of_elements = len(authorized_values) if authorized_values else 100
 
-    found = True
-    i = 0
-    while found:
+    elemss = [stack.get_elems()[::-1] for stack in stacks]
+    max_depth = max(len(elems) for elems in elemss)
+
+    for i in range(max_depth):
         vals: Optional[Set[Optional[int]]] = set()
-        found = False
-        for stack in stacks:
-            elems = stack.get_elems()
-            if len(elems) <= i:
-                continue
-            found = True
-            next_vals = elems[i].get_vals()
-            if next_vals is None:
-                vals = None
-                break
-            assert vals is not None
-            vals |= next_vals
-            if len(vals) > _max_number_of_elements:
-                vals = None
-                break
+        for elems in elemss:
+            if len(elems) > i:
+                next_vals = elems[i].get_vals()
+                if next_vals is None:
+                    vals = None
+                    break
+                assert vals is not None
+                vals |= next_vals
+                if len(vals) > _max_number_of_elements:
+                    vals = None
+                    break
         stack_elements.append(AbsStackElem(authorized_values, vals))
-        i = i + 1
+
     newSt = Stack(authorized_values)
-    newSt.set_elems(stack_elements)
+    newSt.set_elems(stack_elements[::-1])
     return newSt
 
 
@@ -486,7 +486,6 @@ class StackValueAnalysis:
         (is_stub, stub_ret) = self.stub(ins, addr, stack)
         if is_stub:
             return stub_ret
-
         op = ins.name
         if op.startswith("PUSH"):
             stack.push(ins.operand)

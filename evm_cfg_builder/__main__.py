@@ -6,9 +6,9 @@ import os
 import pstats
 import sys
 from typing import Optional, Union
+from pkg_resources import require
 
 from crytic_compile import cryticparser, CryticCompile, InvalidCompilation, is_supported
-from pkg_resources import require
 
 from evm_cfg_builder.cfg.cfg import CFG
 from evm_cfg_builder.known_hashes.known_hashes import known_hashes

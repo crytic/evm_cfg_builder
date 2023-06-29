@@ -1,11 +1,11 @@
 # EVM CFG BUILDER
 [![Build Status](https://travis-ci.org/crytic/evm_cfg_builder.svg?branch=master)](https://travis-ci.org/crytic/evm_cfg_builder)
-[![Slack Status](https://empireslacking.herokuapp.com/badge.svg)](https://empireslacking.herokuapp.com)
+[![Slack Status](https://slack.empirehacking.nyc/badge.svg)](https://slack.empirehacking.nyc)
 [![PyPI version](https://badge.fury.io/py/evm-cfg-builder.svg)](https://badge.fury.io/py/evm-cfg-builder)
 
 `evm-cfg-builder` is used to extract a control flow graph (CFG) from EVM bytecode. It is used by Ethersplay, Manticore, and  other tools from Trail of Bits. It is a reliable foundation to build program analysis tools for EVM.
 
-We encourage contributions that address any known [issues](https://github.com/trailofbits/evm_cfg_builder/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) and will pay out bounties for accepted PRs. Join us on the [Empire Hacking Slack](https://empireslacking.herokuapp.com) to discuss using or extending `evm-cfg-builder`.
+We encourage contributions that address any known [issues](https://github.com/trailofbits/evm_cfg_builder/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) and will pay out bounties for accepted PRs. Join us on the [Empire Hacking Slack](https://slack.empirehacking.nyc) to discuss using or extending `evm-cfg-builder`.
 
 ## Features
 
@@ -54,7 +54,7 @@ pip install .
 
 ## Getting Help
 
-Feel free to stop by our [Slack channel](https://empireslacking.herokuapp.com) (#ethereum) for help using or extending evm-cfg-builder.
+Feel free to stop by our [Slack channel](https://slack.empirehacking.nyc) (#ethereum) for help using or extending evm-cfg-builder.
 
 ## License
 
